@@ -1,0 +1,2108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ECHO — Clinical Symptom Entry</title>
+
+  <!-- ─── TAILWIND CSS (CDN) ──────────────────────────────────────────── -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ─── GOOGLE FONT: MANROPE ────────────────────────────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- ─── TAILWIND CONFIG ──────────────────────────────────────────────── -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { manrope: ['Manrope', 'sans-serif'] },
+          colors: {
+            /* Primary brand teal from Figma */
+            'echo-teal':   '#1A535C',
+            /* Lighter accent teal */
+            'echo-accent': '#4ECDC4',
+            /* Danger / hotspot red */
+            'echo-red':    '#FF6B6B',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- ─── GLOBAL STYLES ───────────────────────────────────────────────── -->
+  <style>
+    /* Apply Manrope globally */
+    body { font-family: 'Manrope', sans-serif; }
+
+    /* ── Pulsing hotspot animation ──────────────────────────────────── */
+    @keyframes pulse-ring {
+      0%   { transform: scale(1);   opacity: 0.6; }
+      100% { transform: scale(2.4); opacity: 0;   }
+    }
+    .hotspot-ring {
+      animation: pulse-ring 1.8s ease-out infinite;
+    }
+
+    /* ── Screen visibility helper ───────────────────────────────────── */
+    /* All screens are hidden by default; JS toggles .active to show them */
+    .screen { display: none; }
+    .screen.active { display: flex; }
+
+    /* ── Scrollable screen body ─────────────────────────────────────── */
+    .screen-scroll { overflow-y: auto; }
+
+    /* ── Active nav tab indicator bar ──────────────────────────────── */
+    .nav-tab.active-tab .tab-bar {
+      display: block;
+    }
+    .tab-bar { display: none; }
+
+    /* ── VAS bubble hover state ─────────────────────────────────────── */
+    .vas-bubble:hover { border-color: #1A535C; cursor: pointer; }
+    .vas-bubble.selected {
+      background-color: #1A535C;
+      border-color: #1A535C;
+    }
+
+    /* ── Pain type toggle button ────────────────────────────────────── */
+    .pain-btn.selected {
+      background-color: #1A535C;
+      border-color: #1A535C;
+      color: #fff;
+    }
+
+    /* ── Symptom tag toggle ─────────────────────────────────────────── */
+    .symptom-tag.selected {
+      background-color: #1A535C;
+      color: #fff;
+    }
+
+    /* ── Gender toggle ──────────────────────────────────────────────── */
+    .gender-btn.active {
+      background: #fff;
+      color: #1A535C;
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+
+    /* ── Calendar day active state ──────────────────────────────────── */
+    .cal-day.active {
+      background: #fff;
+      outline: 2px solid #1A535C;
+      color: #1A535C;
+    }
+
+    /* ── Smooth scroll for long screens ────────────────────────────── */
+    .screen-inner { -webkit-overflow-scrolling: touch; }
+
+    /* ── Vitals trend arrow colours ─────────────────────────────────── */
+    .trend-stable { color: #4ECDC4; }
+    .trend-up     { color: #FF6B6B; }
+    .trend-down   { color: #1A535C; }
+
+    /* ── Mono font for MRN numbers ──────────────────────────────────── */
+    .font-mono-mrn { font-family: 'Courier New', monospace; letter-spacing: 0.08em; }
+  </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-start justify-center py-8">
+
+  <!--
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  PHONE SHELL — centres a 390px mobile frame on the page              │
+  └──────────────────────────────────────────────────────────────────────┘
+  -->
+  <div class="relative w-[390px] bg-gray-50 shadow-2xl rounded-[2rem] overflow-hidden"
+       style="min-height: 844px;">
+
+    <!--
+    ══════════════════════════════════════════════════════════════════════
+      SCREEN 1 — SYMPTOM MAPPING
+    ══════════════════════════════════════════════════════════════════════
+    This is the main entry point. Patient taps the body silhouette to
+    place a hotspot marker at that exact coordinate.
+    -->
+    <div id="screen-mapping" class="screen active flex-col w-full h-[844px]">
+
+      <!-- ── Top Header Bar ───────────────────────────────────────── -->
+      <!--
+        Three-zone header:
+          LEFT  — logo + MRN
+          RIGHT — Edit Details button + EN language badge
+        Using gap-2 on the right group keeps everything tight but readable
+        at 390 px without any overlap risk.
+      -->
+      <header class="flex-shrink-0 h-16 px-4 bg-white border-b border-slate-200 flex justify-between items-center z-10">
+
+        <!-- Left: logo + record info -->
+        <div class="flex items-center gap-2.5">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect width="24" height="24" rx="6" fill="#1A535C"/>
+            <path d="M12 5v14M5 12h14" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <div class="flex flex-col leading-none">
+            <span class="text-[11px] font-extrabold text-echo-teal uppercase tracking-wide leading-3">PATIENT RECORD</span>
+            <span class="text-[10px] font-bold text-slate-500 tracking-wide mt-0.5">MRN: 882-091-PX</span>
+          </div>
+        </div>
+
+        <!-- Right: Edit Details + language badge -->
+        <div class="flex items-center gap-2">
+
+          <!--
+            EDIT DETAILS BUTTON
+            ─────────────────────────────────────────────────────
+            Design intent: "medical-grade" — clinical, not decorative.
+            • Outlined (ghost) style so it doesn't compete with the
+              primary SAVE COORDINATES CTA lower on screen.
+            • Pencil icon reinforces the edit action at a glance,
+              useful for low-literacy / international patients.
+            • text-[10px] + tight tracking keeps it compact on mobile.
+            • hover/active states give clear tactile feedback.
+          -->
+          <button onclick="showScreen('description')"
+                  class="flex items-center gap-1.5
+                         px-3 py-1.5
+                         rounded-lg
+                         border border-slate-300
+                         bg-white
+                         text-[10px] font-bold text-slate-600 uppercase tracking-wide
+                         hover:border-echo-teal hover:text-echo-teal
+                         active:bg-slate-50
+                         transition-all duration-150">
+            <!-- Pencil icon -->
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M8.5 1.5l2 2L3.5 11H1.5V9L8.5 1.5z"
+                    stroke="currentColor" stroke-width="1.4"
+                    stroke-linejoin="round"/>
+            </svg>
+            Edit Details
+          </button>
+
+          <!-- Language badge -->
+          <button class="px-2.5 py-1.5 rounded-lg border border-echo-teal
+                         text-[11px] font-bold text-echo-teal uppercase tracking-wide">
+            EN
+          </button>
+
+        </div>
+      </header>
+
+      <!-- ── Scrollable Body ──────────────────────────────────────── -->
+      <div class="flex-1 overflow-y-auto screen-inner bg-white relative">
+
+        <!-- Gender Toggle (MALE / FEMALE) -->
+        <!--
+          Floats over the top of the anatomy SVG.
+          top: 12px places it just inside the container header area,
+          matching the Figma design where it sits above the figure.
+        -->
+        <div style="position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:20;"
+             class="bg-slate-100 border border-slate-200 rounded-2xl p-1 flex gap-0">
+          <button id="btn-male"
+                  onclick="setGender('male')"
+                  class="gender-btn active px-6 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide transition-all">
+            MALE
+          </button>
+          <button id="btn-female"
+                  onclick="setGender('female')"
+                  class="gender-btn px-6 py-2 rounded-xl text-[11px] font-extrabold text-slate-500 uppercase tracking-wide transition-all">
+            FEMALE
+          </button>
+        </div>
+
+        <!-- ── Tool Panel (left sidebar icons) ──────────────────── -->
+        <!--
+          Positioned relative to anatomy-container.
+          top:180px sits mid-torso on the 430px-tall container window.
+        -->
+        <div style="position:absolute; left:8px; top:180px; z-index:20;"
+             class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 flex flex-col gap-1">
+          <!-- Draw tool (active) -->
+          <button id="tool-draw"
+                  onclick="setTool('draw')"
+                  title="Place marker"
+                  class="w-12 h-12 bg-echo-teal rounded-xl flex items-center justify-center shadow-sm transition-all">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <!-- Eraser tool -->
+          <button id="tool-erase"
+                  onclick="setTool('erase')"
+                  title="Erase markers"
+                  class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
+            <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
+              <path d="M11 2L16 7L7 16H2L1 12L11 2Z" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M7 16H17" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- ── Zoom Panel (below tool panel) ─────────────────────── -->
+        <div style="position:absolute; left:8px; top:300px; z-index:20;"
+             class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 flex flex-col gap-1">
+          <button onclick="zoomIn()" title="Zoom in"
+                  class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="#475569" stroke-width="1.5"/>
+              <path d="M7 4.5V9.5M4.5 7h5" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M11 11l3 3" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button onclick="zoomOut()" title="Zoom out"
+                  class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="#475569" stroke-width="1.5"/>
+              <path d="M4.5 7h5" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M11 11l3 3" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- ── ANATOMY MAP CANVAS ─────────────────────────────────── -->
+        <!--
+          HOW THE COORDINATE SYSTEM WORKS
+          ────────────────────────────────
+          The Figma SVG has viewBox="0 0 390 740" — it is designed to fill
+          the full 390 px phone width.  We render it at its natural width
+          (390 px) so every pixel maps 1:1 with the design.
+
+          A transparent <div id="map-canvas"> is laid over the SVG using
+          position:absolute with identical dimensions.  When the user taps,
+          handleMapClick() reads the click position relative to that div,
+          converts to % of (390 × 740), and renders a hotspot at that %.
+          Because the SVG and the overlay share the same bounding box the
+          hotspot always appears exactly where the user touched.
+
+          The marker-layer sits inside the same wrapper so its coordinate
+          space is identical — no offset math needed.
+        -->
+        <div id="anatomy-container"
+             class="relative w-full"
+             style="height: 430px; overflow: hidden;">
+
+          <!-- Label: ANTERIOR -->
+          <span class="absolute top-2 left-1/2 -translate-x-1/2 z-10
+                       text-[9px] font-extrabold text-slate-400 uppercase tracking-[.2em]
+                       pointer-events-none">
+            ANTERIOR
+          </span>
+
+          <!--
+            ANATOMY WRAP — holds the SVG + marker layer together.
+            transform-origin: top center lets zoom scale outward from the top.
+          -->
+          <div id="anatomy-wrap"
+               class="relative transition-transform duration-300"
+               style="transform-origin: top center; transform: scale(1);
+                      width: 390px; height: 740px;">
+
+            <!--
+              ══════════════════════════════════════════════════════════
+                REAL ANATOMICAL BODY DIAGRAM — provided by designer
+                viewBox="0 0 390 740"  |  natural size: 390 × 740 px
+                The SVG contains a high-fidelity anatomical photo as a
+                base64-encoded JPEG pattern, desaturated via mix-blend.
+              ══════════════════════════════════════════════════════════
+            -->
+            <svg id="anatomy-svg"
+                 width="390" height="740"
+                 viewBox="0 0 390 740"
+                 fill="none"
+                 xmlns="http://www.w3.org/2000/svg"
+                 xmlns:xlink="http://www.w3.org/1999/xlink"
+                 style="display:block; pointer-events:none;">
+              <g opacity="0.2">
+                <rect width="778" height="1868" transform="translate(-194 -572)" fill="url(#pattern0_18_2677)"/>
+                <rect width="778" height="1868" transform="translate(-194 -572)" fill="white" style="mix-blend-mode:saturation"/>
+              </g>
+              <defs>
+                <pattern id="pattern0_18_2677" patternContentUnits="objectBoundingBox" width="1" height="1">
+                  <use xlink:href="#image0_18_2677" transform="matrix(0.002 0 0 0.000833333 0 0.291667)"/>
+                </pattern>
+                <image id="image0_18_2677" width="500" height="500" preserveAspectRatio="none"
+                  xlink:href="data:image/jpeg;base64,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"/>
+              </defs>
+            </svg>
+
+            <!--
+              MARKER LAYER
+              ─────────────────────────────────────────────────────────
+              Injected hotspot divs are absolutely positioned here.
+              This div shares the same 390×740 bounding box as the SVG,
+              so percentage-based left/top coordinates on markers map
+              pixel-perfectly onto the anatomy image.
+            -->
+            <div id="marker-layer"
+                 class="absolute inset-0 pointer-events-none"
+                 style="width:390px; height:740px;">
+            </div>
+
+          </div><!-- /anatomy-wrap -->
+
+          <!--
+            CLICK CAPTURE OVERLAY
+            ─────────────────────────────────────────────────────────
+            A fully transparent div stretched over the SVG.
+            Dimensions match the SVG exactly: 390 × 740 px.
+
+            When the user taps, handleMapClick() computes:
+              xPct = (clientX - rect.left)  / rect.width  * 100
+              yPct = (clientY - rect.top)   / rect.height * 100
+
+            Those percentages are then used to position() the marker
+            inside #marker-layer — same coordinate space, no offset.
+          -->
+          <div id="map-canvas"
+               onclick="handleMapClick(event)"
+               style="
+                 position: absolute;
+                 top: 0;
+                 left: 50%;
+                 transform: translateX(-50%);
+                 width: 390px;
+                 height: 740px;
+                 cursor: crosshair;
+                 z-index: 10;
+                 background: transparent;
+               ">
+          </div>
+
+        </div><!-- /anatomy-container -->
+
+        <!-- ── ACTIVE MAPPING INFO CARD ───────────────────────────── -->
+        <!--
+          This card shows the currently selected symptom location + severity.
+          It floats below the body map and updates when a marker is placed.
+        -->
+        <div class="mx-6 mt-2 mb-6 p-6 bg-white rounded-2xl
+                    shadow-[0_8px_30px_rgba(0,0,0,0.06)]
+                    border border-slate-200">
+
+          <!-- Status indicator row -->
+          <div class="flex items-center gap-2 mb-5">
+            <span class="w-2 h-2 rounded-full bg-echo-red animate-pulse"></span>
+            <span class="text-[11px] font-extrabold text-echo-teal uppercase tracking-wide">
+              Active Mapping
+            </span>
+          </div>
+
+          <!-- Selected area + severity (updated by JS) -->
+          <div class="flex gap-8 mb-5">
+            <div>
+              <div class="text-[9px] font-normal text-slate-400 uppercase tracking-wide mb-0.5">Selected Area</div>
+              <div id="info-area" class="text-base font-normal text-echo-teal">Tap body to select</div>
+            </div>
+            <div>
+              <div class="text-[9px] font-normal text-slate-400 uppercase tracking-wide mb-0.5">Severity</div>
+              <div id="info-severity" class="text-base font-normal text-echo-teal">—</div>
+            </div>
+          </div>
+
+          <!-- Save Coordinates CTA button → navigates to Timeline screen -->
+          <button onclick="saveCoordinates()"
+                  class="w-full py-4 bg-echo-teal rounded-2xl
+                         text-white text-[11px] font-extrabold uppercase tracking-widest
+                         shadow-md hover:bg-teal-800 active:scale-[0.98] transition-all">
+            SAVE COORDINATES
+          </button>
+        </div>
+
+      </div><!-- /screen-scroll -->
+
+      <!-- ── Bottom Tab Navigation ──────────────────────────────── -->
+      <nav class="flex-shrink-0 h-20 bg-white border-t border-slate-200 flex items-start px-2 z-10">
+        <!-- VITALS (active on this screen) -->
+        <button class="nav-tab active-tab flex-1 pt-1 flex flex-col items-center justify-center relative"
+                onclick="showScreen('mapping')">
+          <!-- Active indicator bar -->
+          <div class="tab-bar absolute top-0 left-1/2 -translate-x-1/2
+                      w-14 h-1.5 bg-echo-teal rounded-b-full
+                      shadow-[0_2px_4px_rgba(26,83,92,0.3)]"></div>
+          <svg width="20" height="16" viewBox="0 0 20 16" fill="none" class="mt-2">
+            <path d="M2 8 L6 4 L9 10 L13 2 L16 8 L18 8" stroke="#1A535C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="text-[9px] font-extrabold text-echo-teal uppercase tracking-wide mt-1">VITALS</span>
+        </button>
+        <!-- DIAGNOSIS -->
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center"
+                onclick="showScreen('description')">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 3C6.13 3 3 6.13 3 10s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 8c-1.66 0-3.14-.85-4-2.14.02-1.32 2.67-2.04 4-2.04 1.33 0 3.98.72 4 2.04A4.99 4.99 0 0110 14z" fill="#94A3B8"/>
+          </svg>
+          <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide mt-1">DIAGNOSIS</span>
+        </button>
+        <!-- TREATMENT -->
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center"
+                onclick="showScreen('timeline')">
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none">
+            <rect x="1" y="3" width="14" height="16" rx="2" stroke="#94A3B8" stroke-width="1.5"/>
+            <path d="M5 1v4M11 1v4M1 8h14" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide mt-1">TREATMENT</span>
+        </button>
+        <!-- SUMMARY -->
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center"
+                onclick="showScreen('patient-summary')">
+          <svg width="18" height="20" viewBox="0 0 18 20" fill="none">
+            <rect x="1" y="1" width="16" height="18" rx="2" stroke="#94A3B8" stroke-width="1.5"/>
+            <path d="M5 7h8M5 11h8M5 15h5" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide mt-1">SUMMARY</span>
+        </button>
+      </nav>
+
+    </div><!-- /screen-mapping -->
+
+
+    <!--
+    ══════════════════════════════════════════════════════════════════════
+      SCREEN 2 — TIMELINE (Treatment Timeline / Duration Picker)
+    ══════════════════════════════════════════════════════════════════════
+    -->
+    <div id="screen-timeline" class="screen flex-col w-full h-[844px]">
+
+      <!-- Header -->
+      <header class="flex-shrink-0 h-16 px-6 bg-white border-b border-neutral-300 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect width="20" height="20" rx="5" fill="#1A535C"/>
+            <path d="M10 4v12M4 10h12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="text-base font-extrabold text-zinc-900 uppercase tracking-wide">PATIENT RECORD</span>
+        </div>
+        <span class="text-sm font-extrabold text-zinc-700 uppercase">EN</span>
+      </header>
+
+      <!-- Scrollable content -->
+      <div class="flex-1 overflow-y-auto screen-inner bg-gray-50">
+
+        <!-- ── Date strip ───────────────────────────────────────── -->
+        <div class="bg-white border-b border-neutral-300 py-6">
+          <div class="flex justify-between items-center px-6 mb-5">
+            <span class="text-[11px] font-extrabold text-zinc-700 uppercase tracking-wide">Treatment Timeline</span>
+            <span class="text-[11px] font-extrabold text-zinc-700">OCTOBER 2023</span>
+          </div>
+          <!-- Day pills -->
+          <div class="flex gap-2 px-6 overflow-x-auto no-scrollbar">
+            <div class="flex-shrink-0 w-16 h-20 rounded-xl bg-gray-100/50 border border-neutral-300 opacity-40 flex flex-col items-center justify-center">
+              <span class="text-[10px] font-bold text-zinc-700 uppercase">Mon</span>
+              <span class="text-xl font-extrabold text-zinc-900 mt-1">21</span>
+            </div>
+            <div class="flex-shrink-0 w-16 h-20 rounded-xl bg-gray-100/50 border border-neutral-300 opacity-40 flex flex-col items-center justify-center">
+              <span class="text-[10px] font-bold text-zinc-700 uppercase">Tue</span>
+              <span class="text-xl font-extrabold text-zinc-900 mt-1">22</span>
+            </div>
+            <!-- Active day -->
+            <div class="flex-shrink-0 w-16 h-20 rounded-xl bg-white border-2 border-echo-teal shadow-sm flex flex-col items-center justify-center">
+              <span class="text-[10px] font-bold text-echo-teal uppercase">Wed</span>
+              <span class="text-xl font-extrabold text-echo-teal mt-1">23</span>
+            </div>
+            <div class="flex-shrink-0 w-16 h-20 rounded-xl bg-gray-100 border border-neutral-300 flex flex-col items-center justify-center">
+              <span class="text-[10px] font-bold text-zinc-700 uppercase">Thu</span>
+              <span class="text-xl font-extrabold text-zinc-900 mt-1">24</span>
+            </div>
+            <div class="flex-shrink-0 w-16 h-20 rounded-xl bg-gray-100 border border-neutral-300 flex flex-col items-center justify-center">
+              <span class="text-[10px] font-bold text-zinc-700 uppercase">Fri</span>
+              <span class="text-xl font-extrabold text-zinc-900 mt-1">25</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Duration header ──────────────────────────────────── -->
+        <div class="flex flex-col items-center pt-8 pb-4">
+          <span class="text-[10px] font-extrabold text-echo-teal uppercase tracking-[0.2em]">Active Duration Selection</span>
+          <div class="mt-2 text-5xl font-light text-zinc-900 tracking-tight">08:00 — 14:30</div>
+        </div>
+
+        <!-- ── Clock dial ───────────────────────────────────────── -->
+        <div class="flex justify-center my-4">
+          <div class="relative w-80 h-80">
+
+            <!-- Outer ring -->
+            <svg class="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
+              <circle cx="160" cy="160" r="148" stroke="#e5e7eb" stroke-width="1" fill="none"/>
+              <circle cx="160" cy="160" r="118" stroke="#e5e7eb" stroke-width="0.6" fill="none" opacity="0.5"/>
+              <circle cx="160" cy="160" r="64"  stroke="#e5e7eb" stroke-width="0.4" fill="none" opacity="0.3"/>
+
+              <!--
+                Arc from 08:00 (240deg) to 14:30 (~75deg),
+                drawn as a sweeping path on the outer ring.
+                08:00 → 240° from top (clockwise 0°=top = -90° offset)
+                Actually using hours: 8h = 8/24*360=120° from top
+                14.5h = 14.5/24*360=217.5°
+                SVG 0° is 3-o'clock, top is -90°.
+                Angle for 8h from top: (8/24)*360 - 90 = 120-90 = 30°
+                Angle for 14.5h: (14.5/24)*360 - 90 = 217.5-90 = 127.5°
+              -->
+              <path id="clock-arc"
+                    d="M 235.6 80.0 A 148 148 0 0 1 278.3 230.6"
+                    stroke="#1A535C" stroke-width="3" fill="none"
+                    stroke-linecap="round" opacity="0.3"/>
+            </svg>
+
+            <!-- Hour labels -->
+            <span class="absolute top-3 left-1/2 -translate-x-1/2 text-[11px] font-extrabold text-zinc-400">00</span>
+            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-extrabold text-zinc-400">06</span>
+            <span class="absolute bottom-3 left-1/2 -translate-x-1/2 text-[11px] font-extrabold text-zinc-400">12</span>
+            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-extrabold text-zinc-400">18</span>
+
+            <!--
+              Draggable handles — square teal dots positioned at 8h and 14.5h
+              8h → x=160 + 148*sin(30°) = 160+74 = 234, y=160 - 148*cos(30°) = 160-128 = 32
+              14.5h → angle=127.5° → x=160+148*sin(127.5°)=160+117.6=277.6
+                                      y=160-148*cos(127.5°)=160+90=250  ← approx
+            -->
+            <div class="absolute w-5 h-5 bg-slate-200 rounded-sm border-4 border-echo-teal shadow-md cursor-pointer"
+                 style="left: 256px; top: 46px; transform: translate(-50%,-50%)"></div>
+            <div class="absolute w-5 h-5 bg-slate-200 rounded-sm border-4 border-echo-teal shadow-md cursor-pointer"
+                 style="left: 268px; top: 258px; transform: translate(-50%,-50%)"></div>
+
+            <!-- Center display -->
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="w-48 h-48 rounded-full bg-white/80 border border-neutral-300/30
+                          shadow-xl backdrop-blur-sm flex flex-col items-center justify-center">
+                <span class="text-[10px] font-extrabold text-zinc-500 uppercase tracking-wider">Total Time</span>
+                <span class="text-5xl font-black text-echo-teal mt-1 leading-none">06:30</span>
+                <span class="text-[10px] font-extrabold text-zinc-700 uppercase tracking-wide mt-1">Hours</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Start / End trigger cards ───────────────────────── -->
+        <div class="px-6 flex flex-col gap-4 pb-8">
+          <div class="bg-white rounded-2xl border border-neutral-300/60 p-5 flex justify-between items-center">
+            <div>
+              <div class="text-[10px] font-extrabold text-zinc-700 uppercase tracking-wide">Start Trigger</div>
+              <div class="text-xl font-bold text-zinc-900 mt-1">08:00 AM</div>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-slate-200/30 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="2" y="4" width="16" height="14" rx="2" stroke="#1A535C" stroke-width="1.5"/>
+                <path d="M6 2v4M14 2v4M2 9h16" stroke="#1A535C" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M13 13l1.5 1.5L17 12" stroke="#1A535C" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl border border-neutral-300/60 p-5 flex justify-between items-center">
+            <div>
+              <div class="text-[10px] font-extrabold text-zinc-700 uppercase tracking-wide">Completion Target</div>
+              <div class="text-xl font-bold text-zinc-900 mt-1">02:30 PM</div>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-100/30 flex items-center justify-center">
+              <svg width="18" height="20" viewBox="0 0 18 20" fill="none">
+                <path d="M9 1v3M1 9h3M14 9h3M9 14v3" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="9" cy="9" r="6" stroke="#64748b" stroke-width="1.5"/>
+                <path d="M9 6v4l2 2" stroke="#64748b" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- CTA → go to Description screen -->
+          <button onclick="showScreen('description')"
+                  class="w-full mt-2 py-4 bg-echo-teal rounded-2xl
+                         text-white text-[11px] font-extrabold uppercase tracking-widest
+                         shadow-md hover:bg-teal-800 transition-all">
+            CONFIRM TIMELINE →
+          </button>
+        </div>
+
+      </div><!-- /scroll -->
+
+      <!-- Bottom nav -->
+      <nav class="flex-shrink-0 h-20 bg-white border-t border-neutral-300 flex items-start px-2">
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('mapping')">
+          <svg width="20" height="16" viewBox="0 0 20 16" fill="none"><path d="M2 8 L6 4 L9 10 L13 2 L16 8 L18 8" stroke="#71717a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-500 uppercase tracking-wide mt-1">VITALS</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('description')">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3C6.13 3 3 6.13 3 10s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 8c-1.66 0-3.14-.85-4-2.14.02-1.32 2.67-2.04 4-2.04 1.33 0 3.98.72 4 2.04A4.99 4.99 0 0110 14z" fill="#71717a"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-500 uppercase tracking-wide mt-1">DIAGNOSIS</span>
+        </button>
+        <!-- TREATMENT active -->
+        <button class="nav-tab active-tab flex-1 flex flex-col items-center justify-center relative pt-4 bg-gray-100/40 border-t-[3px] border-echo-teal" onclick="showScreen('timeline')">
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none"><rect x="1" y="3" width="14" height="16" rx="2" stroke="#1A535C" stroke-width="1.5"/><path d="M5 1v4M11 1v4M1 8h14" stroke="#1A535C" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-echo-teal uppercase tracking-wide mt-1">TREATMENT</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('patient-summary')">
+          <svg width="18" height="20" viewBox="0 0 18 20" fill="none"><rect x="1" y="1" width="16" height="18" rx="2" stroke="#71717a" stroke-width="1.5"/><path d="M5 7h8M5 11h8M5 15h5" stroke="#71717a" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-500 uppercase tracking-wide mt-1">SUMMARY</span>
+        </button>
+      </nav>
+
+    </div><!-- /screen-timeline -->
+
+
+    <!--
+    ══════════════════════════════════════════════════════════════════════
+      SCREEN 3 — DESCRIPTION (Symptom Entry v2.0)
+    ══════════════════════════════════════════════════════════════════════
+    -->
+    <div id="screen-description" class="screen flex-col w-full h-[844px]">
+
+      <!-- Header -->
+      <header class="flex-shrink-0 h-16 px-6 bg-white border-b border-gray-200 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect width="16" height="16" rx="4" fill="#1A535C" opacity="0.8"/>
+            <path d="M8 3v10M3 8h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="text-[9px] font-bold text-echo-teal/70 uppercase leading-3">Patient</div>
+            <div class="text-[9px] font-bold text-echo-teal/70 uppercase leading-3">Record</div>
+          </div>
+        </div>
+        <span class="text-lg font-extrabold text-echo-teal">SYMPTOM_ENTRY_v2.0</span>
+        <span class="text-[10px] font-bold text-echo-teal/60 uppercase">EN</span>
+      </header>
+
+      <!-- Scrollable content -->
+      <div class="flex-1 overflow-y-auto screen-inner bg-gray-50 flex flex-col gap-4 py-4 px-4">
+
+        <!-- ── 01. Pain Characteristics ─────────────────────────── -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex justify-between items-center mb-6">
+            <span class="text-[11px] font-extrabold text-echo-teal/60 uppercase tracking-wide">
+              01. Pain Characteristics
+            </span>
+            <span class="text-[9px] font-extrabold text-red-400 tracking-wide">REQUIRED</span>
+          </div>
+          <!-- 2-column grid of pain type buttons -->
+          <div class="grid grid-cols-2 gap-2">
+            <button class="pain-btn py-3 rounded-lg border border-gray-300 text-sm font-semibold text-zinc-900 hover:border-echo-teal transition-all"
+                    onclick="selectPain(this)">Dull</button>
+            <button class="pain-btn selected py-3 rounded-lg border text-sm font-bold transition-all"
+                    onclick="selectPain(this)">Throbbing</button>
+            <button class="pain-btn py-3 rounded-lg border border-gray-300 text-sm font-semibold text-zinc-900 hover:border-echo-teal transition-all"
+                    onclick="selectPain(this)">Stabbing</button>
+            <button class="pain-btn py-3 rounded-lg border border-gray-300 text-sm font-semibold text-zinc-900 hover:border-echo-teal transition-all"
+                    onclick="selectPain(this)">Aching</button>
+            <button class="pain-btn py-3 rounded-lg border border-gray-300 text-sm font-semibold text-zinc-900 hover:border-echo-teal transition-all"
+                    onclick="selectPain(this)">Burning</button>
+            <button class="pain-btn py-3 rounded-lg border border-gray-300 text-sm font-semibold text-zinc-900 hover:border-echo-teal transition-all"
+                    onclick="selectPain(this)">Cramping</button>
+          </div>
+        </div>
+
+        <!-- ── 02. Intensity Scale (VAS) ────────────────────────── -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex justify-between items-center mb-8">
+            <span class="text-[11px] font-extrabold text-echo-teal/60 uppercase tracking-wide">
+              02. Intensity Scale (VAS)
+            </span>
+            <!-- Live score display -->
+            <div class="flex items-baseline gap-0.5">
+              <span id="vas-score" class="text-2xl font-extrabold text-echo-teal">07</span>
+              <span class="text-sm font-bold text-echo-teal/40">/ 10</span>
+            </div>
+          </div>
+
+          <!--
+            VAS bubbles — each has a data-val attribute.
+            Bubbles grow in size from 1→10. Clicking one sets the score.
+          -->
+          <div class="flex items-end gap-1 h-20 relative">
+            <!-- bubble sizes: 12,14,16,18,20,22,24,26,28,32 px from top -->
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-3 h-3 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="1" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">01</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-3.5 h-3.5 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="2" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">02</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-4 h-4 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="3" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">03</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-5 h-5 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="4" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">04</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-6 h-6 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="5" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">05</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-7 h-7 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="6" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">06</span>
+            </div>
+            <!-- 07 is pre-selected -->
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble selected w-9 h-9 rounded-full cursor-pointer shadow-lg
+                           ring-4 ring-echo-teal/10 transition-all"
+                   data-val="7" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-extrabold text-echo-teal">07</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-10 h-10 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="8" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">08</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-11 h-11 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="9" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">09</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+              <div class="vas-bubble w-12 h-12 rounded-full border-2 border-gray-300 cursor-pointer hover:border-echo-teal transition-all" data-val="10" onclick="selectVAS(this)"></div>
+              <span class="text-[9px] font-bold text-echo-teal/40">10</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 03. Associated Phenomena ─────────────────────────── -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <span class="text-[11px] font-extrabold text-echo-teal/60 uppercase tracking-wide">
+            03. Associated Phenomena
+          </span>
+          <!-- Tag cloud — togglable pills -->
+          <div class="flex flex-wrap gap-2 mt-6">
+            <button class="symptom-tag selected px-3.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5 shadow-sm transition-all"
+                    onclick="toggleTag(this)">
+              NAUSEA <span class="text-white/70 text-xs">×</span>
+            </button>
+            <button class="symptom-tag selected px-3.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5 shadow-sm transition-all"
+                    onclick="toggleTag(this)">
+              DIZZINESS <span class="text-white/70 text-xs">×</span>
+            </button>
+            <button class="symptom-tag px-3.5 py-2 rounded-lg border border-gray-300 text-[11px] font-bold text-echo-teal uppercase tracking-wide transition-all"
+                    onclick="toggleTag(this)">FATIGUE</button>
+            <button class="symptom-tag px-3.5 py-2 rounded-lg border border-gray-300 text-[11px] font-bold text-echo-teal uppercase tracking-wide transition-all"
+                    onclick="toggleTag(this)">FEVER</button>
+            <button class="symptom-tag px-3.5 py-2 rounded-lg border border-gray-300 text-[11px] font-bold text-echo-teal uppercase tracking-wide transition-all"
+                    onclick="toggleTag(this)">CHILLS</button>
+            <button class="symptom-tag px-3.5 py-2 rounded-lg border border-gray-300 text-[11px] font-bold text-echo-teal uppercase tracking-wide transition-all"
+                    onclick="toggleTag(this)">NUMBNESS</button>
+            <button class="symptom-tag px-3.5 py-2 rounded-lg border border-gray-300 text-[11px] font-bold text-echo-teal uppercase tracking-wide transition-all"
+                    onclick="toggleTag(this)">VISION LOSS</button>
+          </div>
+
+          <!-- Custom symptom input -->
+          <div class="mt-6 pt-6 border-t border-gray-200">
+            <div class="text-[10px] font-extrabold text-echo-teal/40 uppercase tracking-wide mb-2">Add Other Symptoms</div>
+            <div class="flex gap-2 p-1 bg-gray-50 rounded-lg border border-gray-300">
+              <input type="text"
+                     placeholder="Specify clinical sign..."
+                     class="flex-1 px-3 py-2 bg-transparent text-sm font-normal text-zinc-900
+                            placeholder:text-echo-teal/20 outline-none"/>
+              <button class="px-5 py-2 bg-echo-accent rounded-md text-white text-[11px] font-bold uppercase tracking-wide shadow-sm">
+                APPEND
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Clinical Guidance card ───────────────────────────── -->
+        <div class="bg-slate-100 rounded-lg border border-echo-teal/10 p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="7" stroke="#1A535C" stroke-width="1.5"/>
+              <path d="M8 7v5M8 5v1" stroke="#1A535C" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span class="text-[11px] font-extrabold text-echo-teal uppercase tracking-wide">Clinical Guidance</span>
+          </div>
+          <p class="text-[11px] font-normal text-echo-teal/80 leading-5">
+            Ensure patient provides the subjective intensity based on current state. Throbbing pain often correlates with vascular or inflammatory responses.
+          </p>
+          <!-- Progress bar -->
+          <div class="mt-4 pt-4 border-t border-echo-teal/10">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-[10px] font-extrabold text-echo-teal/60 uppercase">Records Complete</span>
+              <span class="text-[10px] font-extrabold text-echo-teal/60">85%</span>
+            </div>
+            <div class="h-2 bg-echo-teal/10 rounded-full overflow-hidden">
+              <div class="h-full bg-echo-teal rounded-full shadow-sm" style="width: 85%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Last Observation image card ─────────────────────── -->
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <!-- Placeholder for medical image -->
+          <div class="h-40 bg-gradient-to-br from-slate-700 via-teal-900 to-slate-900
+                      flex items-center justify-center">
+            <div class="text-white/20 text-[10px] font-bold uppercase tracking-widest">Diagnostic Image</div>
+          </div>
+          <div class="p-4 flex items-center gap-1.5 border-t border-gray-200">
+            <div class="flex flex-col">
+              <span class="text-[10px] text-echo-teal/40 uppercase tracking-wide">Last Observation</span>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <circle cx="6" cy="6" r="5" stroke="#1A535C" stroke-width="1.2" opacity="0.6"/>
+                  <path d="M6 3v4l2 1" stroke="#1A535C" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+                </svg>
+                <span class="text-[11px] font-bold text-echo-teal">12-OCT-2023 | 09:42 AM</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <button onclick="showScreen('patient-summary')"
+                class="w-full py-4 relative bg-echo-teal rounded-lg border border-echo-teal/20
+                       text-white text-sm font-extrabold uppercase tracking-widest
+                       shadow-[0_8px_20px_-4px_rgba(26,83,92,0.3)]
+                       hover:bg-teal-800 transition-all mb-2">
+          COMMIT TO RECORD
+        </button>
+
+      </div><!-- /scroll -->
+
+      <!-- Bottom nav -->
+      <nav class="flex-shrink-0 h-20 bg-white border-t border-gray-200 flex items-start px-2
+                  shadow-[0_-8px_16px_-4px_rgba(0,0,0,0.05)]">
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('mapping')">
+          <svg width="20" height="16" viewBox="0 0 20 16" fill="none"><path d="M2 8 L6 4 L9 10 L13 2 L16 8 L18 8" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="text-[9px] font-extrabold text-echo-teal/40 uppercase tracking-wide mt-1">VITALS</span>
+        </button>
+        <!-- DIAGNOSIS active -->
+        <button class="nav-tab active-tab flex-1 flex flex-col items-center justify-center relative border-t-4 border-echo-teal bg-slate-100/30 py-4">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3C6.13 3 3 6.13 3 10s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 8c-1.66 0-3.14-.85-4-2.14.02-1.32 2.67-2.04 4-2.04 1.33 0 3.98.72 4 2.04A4.99 4.99 0 0110 14z" fill="#1A535C"/></svg>
+          <span class="text-[9px] font-extrabold text-echo-teal uppercase tracking-wide mt-1">DIAGNOSIS</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('timeline')">
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none"><rect x="1" y="3" width="14" height="16" rx="2" stroke="#94A3B8" stroke-width="1.5"/><path d="M5 1v4M11 1v4M1 8h14" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-echo-teal/40 uppercase tracking-wide mt-1">TREATMENT</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('patient-summary')">
+          <svg width="18" height="20" viewBox="0 0 18 20" fill="none"><rect x="1" y="1" width="16" height="18" rx="2" stroke="#94A3B8" stroke-width="1.5"/><path d="M5 7h8M5 11h8M5 15h5" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-echo-teal/40 uppercase tracking-wide mt-1">SUMMARY</span>
+        </button>
+      </nav>
+
+    </div><!-- /screen-description -->
+
+
+    <!--
+    ══════════════════════════════════════════════════════════════════════
+      SCREEN 4 — PATIENT SUMMARY (Review Your Symptoms)
+    ══════════════════════════════════════════════════════════════════════
+    -->
+    <div id="screen-patient-summary" class="screen flex-col w-full h-[844px]">
+
+      <!-- Header -->
+      <header class="flex-shrink-0 h-16 px-6 bg-white border-b border-gray-200 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect width="20" height="20" rx="5" fill="#1A535C"/>
+            <path d="M10 4v12M4 10h12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="text-base font-extrabold text-echo-teal uppercase">ECHO CLINICAL</span>
+        </div>
+        <div class="flex flex-col items-end">
+          <span class="text-[10px] font-bold text-zinc-700 uppercase tracking-wide">MRN: 8293-XP</span>
+          <span class="text-[10px] font-bold text-echo-teal uppercase tracking-wide">EN</span>
+        </div>
+      </header>
+
+      <!-- Scrollable content -->
+      <div class="flex-1 overflow-y-auto screen-inner bg-gray-50 px-6 pt-10 pb-28 flex flex-col gap-10">
+
+        <!-- Title block -->
+        <div class="flex flex-col gap-3">
+          <span class="text-[11px] font-normal text-echo-accent uppercase tracking-widest">ENTRY REVIEW</span>
+          <h1 class="text-4xl font-normal text-zinc-900 leading-10">Review Your<br/>Symptoms</h1>
+          <p class="text-lg font-normal text-zinc-700 leading-7">
+            Please review the details of the symptoms you've logged. This information will be used by your clinical team to provide accurate care.
+          </p>
+        </div>
+
+        <!-- ── Symptom Map card ──────────────────────────────────── -->
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="pb-5 border-b border-gray-200 mb-5">
+            <span class="text-[11px] font-extrabold text-zinc-700 uppercase tracking-wide">Symptom Map</span>
+          </div>
+
+          <!--
+            SUMMARY BODY MAP
+            ─────────────────────────────────────────────────────────
+            The card is 288px wide (full card minus 2×24px padding).
+            The real SVG has a native viewBox of 0 0 390 740 (ratio ≈ 0.527).
+            We render it at 288 × 547px to fill the card width exactly,
+            then clip the container to a comfortable preview height of 288px
+            (showing roughly the upper body — head to waist).
+
+            Marker positions are stored as % of 390×740 on the mapping
+            screen.  The same % values are re-applied here: because the SVG
+            is rendered with preserveAspectRatio the coordinate space is
+            identical — markers land on the same anatomical spot.
+
+            JS populates #summary-marker-layer whenever this screen is shown.
+          -->
+          <div class="relative bg-white rounded-lg border border-gray-200 overflow-hidden"
+               style="height: 288px;">
+
+            <!--
+              The SVG is full-width (288px) and naturally taller than the
+              container — overflow:hidden crops it to show just the upper
+              body.  We nudge it up slightly (top: -20px) so the head sits
+              near the top of the card, matching the Figma preview.
+            -->
+            <div style="position:absolute; top:-20px; left:0; width:100%;">
+              <svg id="summary-anatomy-svg"
+                   width="100%" height="auto"
+                   viewBox="0 0 390 740"
+                   preserveAspectRatio="xMidYMin meet"
+                   fill="none"
+                   xmlns="http://www.w3.org/2000/svg"
+                   xmlns:xlink="http://www.w3.org/1999/xlink"
+                   style="display:block; pointer-events:none;">
+                <g opacity="0.2">
+                  <rect width="778" height="1868" transform="translate(-194 -572)" fill="url(#summary-pattern)"/>
+                  <rect width="778" height="1868" transform="translate(-194 -572)" fill="white" style="mix-blend-mode:saturation"/>
+                </g>
+                <defs>
+                  <!--
+                    NOTE: pattern IDs must be unique per page.
+                    The mapping screen uses id="pattern0_18_2677".
+                    This copy uses id="summary-pattern" to avoid conflicts.
+                  -->
+                  <pattern id="summary-pattern" patternContentUnits="objectBoundingBox" width="1" height="1">
+                    <use xlink:href="#summary-image" transform="matrix(0.002 0 0 0.000833333 0 0.291667)"/>
+                  </pattern>
+                  <image id="summary-image" width="500" height="500" preserveAspectRatio="none"
+                    xlink:href="data:image/jpeg;base64,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"/>
+                </defs>
+              </svg>
+            </div>
+
+            <!--
+              SUMMARY MARKER LAYER
+              ─────────────────────────────────────────────────────────
+              JS renders static (non-pulsing) marker dots here whenever
+              the patient navigates to this screen. Positions mirror the
+              percentages stored in state.markers — same coordinate space
+              as the mapping screen because both use the same SVG viewBox.
+            -->
+            <div id="summary-marker-layer"
+                 class="absolute inset-0 pointer-events-none">
+            </div>
+
+            <!-- Location label overlay — fades in from the bottom-right -->
+            <div class="absolute bottom-0 left-0 right-0 p-4
+                        bg-gradient-to-t from-white via-white/80 to-transparent">
+              <div class="text-[9px] font-normal text-echo-teal uppercase tracking-wide leading-4">
+                Primary Location
+              </div>
+              <div id="summary-location"
+                   class="text-lg font-normal text-zinc-900 leading-6">
+                Tap body to select
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Timeline & Severity ───────────────────────────────── -->
+        <div class="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-8">
+          <div class="pb-5 border-b border-gray-200">
+            <span class="text-[11px] font-extrabold text-zinc-700 uppercase tracking-wide">Timeline &amp; Severity</span>
+          </div>
+          <!-- Severity -->
+          <div class="flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] font-bold text-zinc-700 uppercase tracking-wide">Severity Rating</span>
+              <span id="summary-severity" class="text-2xl font-extrabold text-echo-teal">7/10</span>
+            </div>
+            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div id="summary-severity-bar" class="h-full bg-echo-teal rounded-full" style="width: 70%"></div>
+            </div>
+          </div>
+          <!-- Date/freq -->
+          <div class="grid grid-cols-2 gap-0">
+            <div class="flex flex-col gap-1">
+              <span class="text-[10px] font-normal text-zinc-700 uppercase tracking-wide">Onset Date</span>
+              <span class="text-sm font-normal text-zinc-900">Oct 14, 2023</span>
+              <span class="text-xs font-normal text-zinc-700">Approximately 8:30 AM</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="text-[10px] font-normal text-zinc-700 uppercase tracking-wide">Peak Frequency</span>
+              <span class="text-sm font-normal text-echo-teal">Intermittent</span>
+              <span class="text-xs font-normal text-zinc-700">Worst during late evening</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Symptom Characteristics ───────────────────────────── -->
+        <div class="bg-slate-200/30 rounded-lg border border-echo-teal/10 px-6 py-6 flex flex-col gap-6">
+          <span class="text-[11px] font-normal text-echo-teal uppercase tracking-wide">Symptom Characteristics</span>
+          <!-- Tag pills with icons -->
+          <div class="flex flex-wrap gap-2">
+            <div class="flex items-center gap-2 px-3 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1C7 1 2 5 2 8.5a5 5 0 0010 0C12 5 7 1 7 1z" stroke="#1A535C" stroke-width="1.2" fill="none"/></svg>
+              <span class="text-sm font-bold text-zinc-900">Throbbing</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1l1.5 4H13l-3.5 2.5 1.5 4L7 9l-4 2.5 1.5-4L1 5h4.5z" stroke="#1A535C" stroke-width="1.2" fill="none"/></svg>
+              <span class="text-sm font-bold text-zinc-900">Cramping</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#1A535C" stroke-width="1.2"/><path d="M7 4v4l2 1" stroke="#1A535C" stroke-width="1" stroke-linecap="round"/></svg>
+              <span class="text-sm font-bold text-zinc-900">Nausea</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-2 bg-white rounded-full shadow-sm border border-gray-200">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2v10" stroke="#1A535C" stroke-width="1.2" stroke-linecap="round"/></svg>
+              <span class="text-sm font-bold text-zinc-900">Sleep Disrupting</span>
+            </div>
+          </div>
+          <!-- Additional notes -->
+          <div class="flex flex-col gap-2">
+            <span class="text-[10px] font-normal text-zinc-700 uppercase tracking-wide">Additional Notes</span>
+            <div class="p-4 bg-white/50 rounded-lg border border-gray-200/30">
+              <p class="text-sm font-normal text-zinc-700 leading-6">
+                "The pain radiates slightly toward the right hip when standing for long periods. Seems to improve with cold compresses."
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit section -->
+        <div class="pt-10 border-t border-gray-200 flex flex-col gap-4">
+          <div class="flex flex-col gap-2">
+            <span class="text-sm font-bold text-zinc-900">Ready to submit this review?</span>
+            <p class="text-xs font-normal text-zinc-700 leading-5">
+              Confirming will securely send this symptom report to your healthcare provider and record it in your patient history.
+            </p>
+          </div>
+          <button onclick="showScreen('confirmation')"
+                  class="w-full px-10 py-4 relative bg-echo-teal rounded-lg
+                         text-white text-[11px] font-bold uppercase tracking-widest
+                         shadow-[0_10px_15px_-3px_rgba(26,83,92,0.2)]
+                         hover:bg-teal-800 transition-all flex items-center justify-center gap-3">
+            CONFIRM &amp; SEND
+            <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+              <path d="M1 5h10M7 1l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+      </div><!-- /scroll -->
+
+      <!-- Bottom nav -->
+      <nav class="flex-shrink-0 h-20 bg-white border-t border-gray-200 flex items-start px-2">
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('mapping')">
+          <svg width="20" height="16" viewBox="0 0 20 16" fill="none"><path d="M2 8 L6 4 L9 10 L13 2 L16 8 L18 8" stroke="#71717a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-700 uppercase tracking-wide mt-1">VITALS</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('description')">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3C6.13 3 3 6.13 3 10s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 8c-1.66 0-3.14-.85-4-2.14.02-1.32 2.67-2.04 4-2.04 1.33 0 3.98.72 4 2.04A4.99 4.99 0 0110 14z" fill="#71717a"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-700 uppercase tracking-wide mt-1">DIAGNOSIS</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('timeline')">
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none"><rect x="1" y="3" width="14" height="16" rx="2" stroke="#71717a" stroke-width="1.5"/><path d="M5 1v4M11 1v4M1 8h14" stroke="#71717a" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-700 uppercase tracking-wide mt-1">TREATMENT</span>
+        </button>
+        <!-- SUMMARY active -->
+        <button class="nav-tab active-tab flex-1 flex flex-col items-center justify-center relative border-t-4 border-echo-teal bg-slate-200/20 pt-4">
+          <svg width="18" height="20" viewBox="0 0 18 20" fill="none"><rect x="1" y="1" width="16" height="18" rx="2" stroke="#1A535C" stroke-width="1.5"/><path d="M5 7h8M5 11h8M5 15h5" stroke="#1A535C" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-echo-teal uppercase tracking-wide mt-1">SUMMARY</span>
+        </button>
+      </nav>
+
+    </div><!-- /screen-patient-summary -->
+
+
+    <!--
+    ══════════════════════════════════════════════════════════════════════
+      SCREEN 5 — CONFIRMATION (Thank You)
+    ══════════════════════════════════════════════════════════════════════
+    -->
+    <div id="screen-confirmation" class="screen flex-col w-full h-[844px]">
+
+      <!-- No header on this screen — full bleed centered content -->
+      <div class="flex-1 bg-slate-100 flex items-center justify-center overflow-y-auto
+                  px-6"
+           style="background: radial-gradient(ellipse 124% 55% at 50% 50%, rgba(26,83,92,0.04) 0%, rgba(26,83,92,0) 70%), #f1f5f9;">
+
+        <div class="w-full max-w-96 flex flex-col items-center py-20">
+
+          <!-- Check icon card -->
+          <div class="mb-10 relative">
+            <div class="w-20 h-20 bg-white rounded-2xl border border-echo-teal/20 shadow-sm
+                        flex items-center justify-center">
+              <!-- Outer glow ring -->
+              <div class="absolute -inset-1 rounded-[22px] border border-echo-teal/5"></div>
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <circle cx="14" cy="14" r="13" fill="#1A535C"/>
+                <path d="M8 14l4 4 8-8" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Title + subtitle -->
+          <div class="flex flex-col items-center gap-3.5 mb-10 text-center">
+            <h1 class="text-3xl font-extrabold text-zinc-900">Thank You</h1>
+            <div class="w-10 h-1 bg-echo-teal/20 rounded-full"></div>
+            <p class="text-sm font-medium text-zinc-700 leading-6 px-4">
+              The electronic record submission has been successfully finalized and cataloged.
+            </p>
+          </div>
+
+          <!-- Security protocol card -->
+          <div class="w-full mb-10">
+            <!-- Top panel -->
+            <div class="bg-white p-5 rounded-t-2xl border border-neutral-300 flex items-start gap-4">
+              <div class="mt-0.5">
+                <!-- Shield icon -->
+                <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
+                  <path d="M7 1L1 3.5v4.5C1 11.1 3.6 14.2 7 15c3.4-.8 6-3.9 6-7V3.5L7 1z"
+                        fill="#1A535C" opacity="0.8"/>
+                  <path d="M4.5 8l2 2 3-3" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-zinc-700 uppercase tracking-wide">Security Protocol</span>
+                <p class="text-xs font-normal text-zinc-900 leading-5 opacity-80">
+                  Your Medical Record Number (MRN) is currently being transmitted via an encrypted peer-to-peer tunnel.
+                </p>
+              </div>
+            </div>
+            <!-- Footer bar -->
+            <div class="bg-gray-100/50 px-4 py-3 rounded-b-2xl border-l border-r border-b border-neutral-300
+                        flex justify-between items-center">
+              <span class="text-[9px] font-bold text-zinc-700/70 uppercase tracking-wide">Session: 8842-XP9</span>
+              <span class="text-[9px] font-bold text-echo-teal uppercase tracking-wide">Active Encrypting</span>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="w-full flex flex-col gap-3">
+            <button onclick="showScreen('mapping')"
+                    class="w-full h-12 bg-echo-teal rounded-xl shadow-sm
+                           text-white text-[11px] font-bold uppercase tracking-widest
+                           hover:bg-teal-800 transition-all">
+              RETURN TO DASHBOARD
+            </button>
+            <button onclick="showScreen('provider-report')"
+                    class="w-full h-12 bg-white rounded-xl border border-neutral-300
+                           text-gray-600 text-[10px] font-bold uppercase tracking-wide
+                           hover:bg-gray-50 transition-all">
+              EXPORT RECEIPT (PDF)
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /screen-confirmation -->
+
+
+    <!--
+    ══════════════════════════════════════════════════════════════════════
+      SCREEN 6 — PROVIDER REPORT (Clinical Brief)
+    ══════════════════════════════════════════════════════════════════════
+    -->
+    <div id="screen-provider-report" class="screen flex-col w-full h-[844px]">
+
+      <!-- Header -->
+      <header class="flex-shrink-0 h-16 px-6 bg-gray-50 border-b border-neutral-300 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect width="20" height="20" rx="5" fill="#1A535C"/>
+            <path d="M10 4v12M4 10h12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="text-sm font-extrabold text-echo-teal uppercase tracking-wide">PATIENT RECORD</span>
+        </div>
+        <span class="text-sm font-bold text-zinc-900 uppercase">EN</span>
+      </header>
+
+      <!-- Scrollable content -->
+      <div class="flex-1 overflow-y-auto screen-inner bg-gray-50 px-6 pt-6 pb-28 flex flex-col gap-8">
+
+        <!-- ── Patient Identification ─────────────────────────────── -->
+        <div class="bg-white rounded-lg border border-neutral-300 shadow-sm p-6 flex flex-col gap-3">
+          <div>
+            <div class="text-[10px] font-extrabold text-zinc-500 uppercase tracking-widest">IDENTIFICATION</div>
+            <div class="flex items-center gap-4 mt-1">
+              <div class="flex items-center gap-1">
+                <span class="text-[10px] font-extrabold text-zinc-500 uppercase">DOB:</span>
+                <span class="text-xs font-normal text-zinc-900">12-MAY-2001</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-[10px] font-extrabold text-zinc-500 uppercase">SEX:</span>
+                <span class="text-xs font-bold text-zinc-900">MALE</span>
+              </div>
+            </div>
+          </div>
+          <!-- MRN box -->
+          <div class="p-4 bg-slate-200/40 rounded-lg border border-echo-teal/20 flex flex-col gap-1">
+            <span class="text-[10px] font-extrabold text-echo-teal uppercase tracking-wide">Medical Record Number</span>
+            <span class="text-xl font-extrabold text-echo-teal font-mono-mrn tracking-widest">MRN-992-004-XC</span>
+          </div>
+        </div>
+
+        <!-- ── Site Annotation image ─────────────────────────────── -->
+        <div class="relative h-72 rounded-lg border border-neutral-300 shadow-sm overflow-hidden
+                    bg-gradient-to-r from-gray-200 to-gray-200/0">
+
+          <!-- Body silhouette (faint) -->
+          <div class="absolute inset-0 flex justify-center items-center opacity-20">
+            <svg viewBox="0 0 200 520" width="100" height="260" fill="none">
+              <ellipse cx="100" cy="38" rx="26" ry="32" fill="#334155"/>
+              <path d="M60 84 C48 84 36 92 34 106 L28 180 C26 196 30 204 40 206 L40 310 C40 318 46 322 54 322 L54 400 C54 412 60 420 68 420 L68 490 C68 500 76 506 84 506 L100 506 L116 506 C124 506 132 500 132 490 L132 420 C140 420 146 412 146 400 L146 322 C154 322 160 318 160 310 L160 206 C170 204 174 196 172 180 L166 106 C164 92 152 84 140 84 Z" fill="#334155"/>
+              <rect x="90" y="66" width="20" height="18" rx="4" fill="#334155"/>
+            </svg>
+          </div>
+
+          <!-- Annotation label (top left) -->
+          <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm
+                      border border-neutral-300/30 rounded-lg p-2">
+            <div class="text-[10px] font-extrabold text-zinc-500 uppercase tracking-wider">Site Annotation</div>
+            <div class="text-xs font-normal text-zinc-900 uppercase">Abdominal Quadrant 3</div>
+          </div>
+
+          <!-- Point of origin marker -->
+          <div class="absolute" style="top: 98px; left: 186px;">
+            <!-- Square crosshair marker -->
+            <div class="w-4 h-4 bg-white border-2 border-echo-red shadow-sm
+                        flex items-center justify-center">
+              <div class="w-1.5 h-1.5 bg-echo-red"></div>
+            </div>
+          </div>
+          <!-- Label badge -->
+          <div class="absolute bg-echo-teal rounded-sm px-2 py-0.5 shadow-sm"
+               style="top: 97px; left: 206px;">
+            <span class="text-[9px] font-extrabold text-white uppercase">POINT_OF_ORIGIN</span>
+          </div>
+
+        </div>
+
+        <!-- ── SOCRATES: Character ────────────────────────────────── -->
+        <div class="bg-white rounded-lg border border-neutral-300 shadow-sm p-6 flex flex-col gap-4">
+          <div class="pb-2 border-b-2 border-echo-teal inline-block">
+            <span class="text-[11px] font-black text-echo-teal uppercase tracking-[0.15em]">SOCRATES: CHARACTER</span>
+          </div>
+          <p class="text-sm font-normal text-zinc-900 leading-6">
+            Sharp, localized, non-radiating. Described by patient as "seizing" or "constricting" sensation. No rebound tenderness noted on initial palpation.
+          </p>
+        </div>
+
+        <!-- ── SOCRATES metadata grid ─────────────────────────────── -->
+        <div class="bg-white rounded-lg border border-neutral-300 shadow-sm overflow-hidden">
+          <!-- Header row -->
+          <div class="bg-gray-100 border-b border-neutral-300 flex flex-col">
+            <div class="grid grid-cols-2 divide-y divide-neutral-300">
+              <div class="p-4 border-r border-neutral-300">
+                <div class="text-[10px] font-normal text-zinc-500 uppercase tracking-wide">SITE</div>
+                <div class="text-sm font-normal text-zinc-900 uppercase mt-1">EPIGASTRIC</div>
+              </div>
+              <div class="p-4">
+                <div class="text-[10px] font-normal text-zinc-500 uppercase tracking-wide">ONSET</div>
+                <div class="text-sm font-normal text-zinc-900 uppercase mt-1">T-MINUS 4H</div>
+              </div>
+              <div class="p-4 border-r border-neutral-300">
+                <div class="text-[10px] font-normal text-zinc-500 uppercase tracking-wide">RADIATION</div>
+                <div class="text-sm font-normal text-zinc-900 uppercase mt-1">NONE</div>
+              </div>
+              <div class="p-4">
+                <div class="text-[10px] font-normal text-zinc-500 uppercase tracking-wide">SEVERITY</div>
+                <div class="text-sm font-extrabold text-echo-red uppercase mt-1">08 / 10</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clinical observations -->
+          <div class="p-6 flex flex-col gap-6">
+            <div class="pb-2 border-b-2 border-echo-teal inline-block">
+              <span class="text-[11px] font-black text-echo-teal uppercase tracking-[0.15em]">CLINICAL OBSERVATIONS</span>
+            </div>
+            <div class="flex flex-col gap-6">
+              <div>
+                <span class="text-[10px] font-black text-zinc-500 uppercase tracking-wide">ASSOCIATED</span>
+                <p class="text-sm font-medium text-zinc-900 leading-6 mt-1 w-44">
+                  Nausea, mild diaphoresis reported during peaks. No emesis.
+                </p>
+              </div>
+              <div>
+                <span class="text-[10px] font-black text-zinc-500 uppercase tracking-wide">TIMING</span>
+                <p class="text-sm font-medium text-zinc-900 leading-6 mt-1 w-52">
+                  Intermittent, lasting 15-20 minutes per episode. Improving with rest.
+                </p>
+              </div>
+              <div>
+                <span class="text-[10px] font-black text-zinc-500 uppercase tracking-wide">EXACERBATING</span>
+                <p class="text-sm font-medium text-zinc-900 leading-6 mt-1 w-48">
+                  Deep inspiration, palpation of the right upper quadrant.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Vitals table ───────────────────────────────────────── -->
+        <div class="bg-white rounded-lg border border-neutral-300 shadow-sm overflow-hidden">
+          <!-- Table header -->
+          <div class="bg-gray-200 border-b border-neutral-300">
+            <div class="grid grid-cols-4 divide-x divide-neutral-300">
+              <div class="p-4"><span class="text-[10px] font-black text-echo-teal uppercase tracking-wider">PARAMETER</span></div>
+              <div class="p-4 text-center"><span class="text-[10px] font-black text-echo-teal uppercase tracking-wider">VALUE</span></div>
+              <div class="p-4 text-center"><span class="text-[10px] font-black text-echo-teal uppercase tracking-wider">UNIT</span></div>
+              <div class="p-4 text-center"><span class="text-[10px] font-black text-echo-teal uppercase tracking-wider">TREND</span></div>
+            </div>
+          </div>
+          <!-- Rows -->
+          <div class="divide-y divide-neutral-300">
+            <!-- SpO2 -->
+            <div class="grid grid-cols-4 divide-x divide-neutral-300">
+              <div class="px-4 py-4"><span class="text-sm font-extrabold text-zinc-900">SpO2</span></div>
+              <div class="px-4 py-4 text-center"><span class="text-sm font-bold text-zinc-900 font-mono">98</span></div>
+              <div class="px-4 py-4 text-center"><span class="text-sm font-normal text-zinc-500">%</span></div>
+              <div class="px-4 py-4 flex justify-center items-center">
+                <!-- Stable arrow →  -->
+                <svg width="20" height="10" viewBox="0 0 20 10" fill="none">
+                  <path d="M1 5h16M13 1l4 4-4 4" stroke="#4ECDC4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <!-- Heart Rate -->
+            <div class="grid grid-cols-4 divide-x divide-neutral-300">
+              <div class="px-4 py-4"><span class="text-sm font-extrabold text-zinc-900 leading-5">HEART<br/>RATE</span></div>
+              <div class="px-4 py-6 text-center"><span class="text-sm font-bold text-echo-red font-mono">112</span></div>
+              <div class="px-4 py-6 text-center"><span class="text-sm font-normal text-zinc-500">BPM</span></div>
+              <div class="px-4 py-6 flex justify-center items-center">
+                <!-- Up arrow ↑ -->
+                <svg width="16" height="18" viewBox="0 0 16 18" fill="none">
+                  <path d="M8 17V3M2 9l6-6 6 6" stroke="#FF6B6B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <!-- BP Systolic -->
+            <div class="grid grid-cols-4 divide-x divide-neutral-300">
+              <div class="px-4 py-4"><span class="text-sm font-extrabold text-zinc-900 leading-5">BP<br/>SYSTOLIC</span></div>
+              <div class="px-4 py-6 text-center"><span class="text-sm font-bold text-zinc-900 font-mono">145</span></div>
+              <div class="px-4 py-6 text-center"><span class="text-sm font-normal text-zinc-500">mmHg</span></div>
+              <div class="px-4 py-6 flex justify-center items-center">
+                <!-- Up arrow teal ↗ -->
+                <svg width="16" height="18" viewBox="0 0 16 18" fill="none">
+                  <path d="M8 17V3M2 9l6-6 6 6" stroke="#4ECDC4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <!-- Temp -->
+            <div class="grid grid-cols-4 divide-x divide-neutral-300">
+              <div class="px-4 py-4"><span class="text-sm font-extrabold text-zinc-900">TEMP</span></div>
+              <div class="px-4 py-4 text-center"><span class="text-sm font-bold text-zinc-900 font-mono">37.2</span></div>
+              <div class="px-4 py-4 text-center"><span class="text-sm font-normal text-zinc-500">°C</span></div>
+              <div class="px-4 py-4 flex justify-center items-center">
+                <!-- Stable → -->
+                <svg width="20" height="10" viewBox="0 0 20 10" fill="none">
+                  <path d="M1 5h16M13 1l4 4-4 4" stroke="#4ECDC4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Action buttons ─────────────────────────────────────── -->
+        <div class="flex flex-col gap-4">
+          <button onclick="showScreen('confirmation')"
+                  class="w-full py-4 bg-echo-teal rounded-lg relative
+                         text-white text-[11px] font-black uppercase tracking-[0.15em]
+                         shadow-md hover:bg-teal-800 transition-all">
+            GENERATE REPORT PDF
+          </button>
+          <button class="w-full py-4 rounded-lg border-2 border-echo-teal
+                         text-echo-teal text-[11px] font-black uppercase tracking-[0.15em]
+                         hover:bg-echo-teal/5 transition-all">
+            ESCALATE TO ATTENDING
+          </button>
+        </div>
+
+      </div><!-- /scroll -->
+
+      <!-- Bottom nav -->
+      <nav class="flex-shrink-0 h-20 bg-white border-t border-neutral-300 flex items-start px-2
+                  shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('mapping')">
+          <svg width="20" height="16" viewBox="0 0 20 16" fill="none"><path d="M2 8 L6 4 L9 10 L13 2 L16 8 L18 8" stroke="#71717a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-500 uppercase tracking-wide mt-1">VITALS</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('description')">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3C6.13 3 3 6.13 3 10s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 8c-1.66 0-3.14-.85-4-2.14.02-1.32 2.67-2.04 4-2.04 1.33 0 3.98.72 4 2.04A4.99 4.99 0 0110 14z" fill="#71717a"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-500 uppercase tracking-wide mt-1">DIAGNOSIS</span>
+        </button>
+        <button class="nav-tab flex-1 pt-5 flex flex-col items-center justify-center" onclick="showScreen('timeline')">
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none"><rect x="1" y="3" width="14" height="16" rx="2" stroke="#71717a" stroke-width="1.5"/><path d="M5 1v4M11 1v4M1 8h14" stroke="#71717a" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-zinc-500 uppercase tracking-wide mt-1">TREATMENT</span>
+        </button>
+        <!-- SUMMARY active -->
+        <button class="nav-tab active-tab flex-1 flex flex-col items-center justify-center relative border-t-4 border-echo-teal bg-slate-200/30 pt-4">
+          <svg width="18" height="20" viewBox="0 0 18 20" fill="none"><rect x="1" y="1" width="16" height="18" rx="2" stroke="#1A535C" stroke-width="1.5"/><path d="M5 7h8M5 11h8M5 15h5" stroke="#1A535C" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="text-[9px] font-extrabold text-echo-teal uppercase tracking-wide mt-1">SUMMARY</span>
+        </button>
+      </nav>
+
+    </div><!-- /screen-provider-report -->
+
+  </div><!-- /phone shell -->
+
+
+  <!--
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  SCREEN NAV HELPER (pill below phone — for quick prototyping)        │
+  └──────────────────────────────────────────────────────────────────────┘
+  -->
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2
+              bg-white/90 backdrop-blur border border-gray-200 rounded-full
+              shadow-lg px-4 py-2 flex gap-2 text-[10px] z-50">
+    <button onclick="showScreen('mapping')"          class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Map</button>
+    <button onclick="showScreen('timeline')"         class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Timeline</button>
+    <button onclick="showScreen('description')"      class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Describe</button>
+    <button onclick="showScreen('patient-summary')"  class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Summary</button>
+    <button onclick="showScreen('confirmation')"     class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Confirm</button>
+    <button onclick="showScreen('provider-report')"  class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Report</button>
+  </div>
+
+
+  <!-- ─── JAVASCRIPT ────────────────────────────────────────────────── -->
+  <script>
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  STATE                                                           ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    We keep a simple JS object to track the session state.
+    All screens read/write to this object.
+    */
+    const state = {
+      currentScreen:  'mapping',
+      currentTool:    'draw',
+      gender:         'male',
+      markers:        [],
+      activeMarker:   null,
+      vasScore:       7,
+      zoomLevel:      1,
+      hitCanvas:      null,   // Offscreen canvas used for body pixel hit-testing
+    };
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  SCREEN SWITCHER                                                 ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  showScreen(name) hides all .screen divs then shows the one      ║
+    ║  whose id matches "screen-{name}".                               ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById('screen-' + name);
+      if (target) {
+        target.classList.add('active');
+        state.currentScreen = name;
+      }
+      // Sync the summary marker layer every time that screen becomes visible
+      if (name === 'patient-summary') renderSummaryMarkers();
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  GENDER TOGGLE                                                   ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  The real anatomical SVG is gender-neutral, so we only update   ║
+    ║  the button active state here. Future versions could swap        ║
+    ║  between two full SVG assets if provided.                        ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function setGender(gender) {
+      state.gender = gender;
+      document.getElementById('btn-male').classList.toggle('active',   gender === 'male');
+      document.getElementById('btn-female').classList.toggle('active', gender === 'female');
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  TOOL SELECTOR                                                   ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function setTool(tool) {
+      state.currentTool = tool;
+
+      const drawBtn  = document.getElementById('tool-draw');
+      const eraseBtn = document.getElementById('tool-erase');
+      const canvas   = document.getElementById('map-canvas');
+
+      if (tool === 'draw') {
+        drawBtn.classList.add('bg-echo-teal');
+        drawBtn.classList.remove('hover:bg-slate-100');
+        eraseBtn.classList.remove('bg-echo-teal');
+        canvas.style.cursor = 'crosshair';
+      } else {
+        eraseBtn.classList.add('bg-echo-teal');
+        drawBtn.classList.remove('bg-echo-teal');
+        drawBtn.classList.add('hover:bg-slate-100');
+        canvas.style.cursor = 'not-allowed';
+      }
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  ZOOM                                                            ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function zoomIn() {
+      state.zoomLevel = Math.min(state.zoomLevel + 0.2, 2.0);
+      applyZoom();
+    }
+    function zoomOut() {
+      state.zoomLevel = Math.max(state.zoomLevel - 0.2, 0.6);
+      applyZoom();
+    }
+    function applyZoom() {
+      // Scale the anatomy image + marker layer together
+      document.getElementById('anatomy-wrap').style.transform =
+        `scale(${state.zoomLevel})`;
+      // The map-canvas overlay must match — it sits outside anatomy-wrap
+      // but inside the same container, so we scale it identically.
+      const canvas = document.getElementById('map-canvas');
+      canvas.style.transform = `translateX(-50%) scale(${state.zoomLevel})`;
+      canvas.style.transformOrigin = 'top center';
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  BODY REGION LOOKUP                                              ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  Converts a click's percentage position on the silhouette into   ║
+    ║  a human-readable anatomical region name.                        ║
+    ║                                                                  ║
+    ║  The silhouette SVG is 200×520. Dividing the body into regions:  ║
+    ║    Head    → y  0% – 16%                                         ║
+    ║    Neck    → y 16% – 19%                                         ║
+    ║    Chest   → y 19% – 35%   (split L/R by x 50%)                 ║
+    ║    Abdomen → y 35% – 50%   (split L/R)                          ║
+    ║    Pelvis  → y 50% – 60%                                         ║
+    ║    Legs    → y 60% – 100%  (split L/R)                          ║
+    ║    Arms    → x < 20% or x > 80%                                  ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function getRegionLabel(xPct, yPct) {
+      const x = xPct;
+      const y = yPct;
+
+      // Head region
+      if (y < 15) {
+        if (x < 45) return 'Left Temple';
+        if (x > 55) return 'Right Temple';
+        if (y < 8)  return 'Crown';
+        return 'Forehead';
+      }
+      // Neck
+      if (y < 19) return 'Neck';
+
+      // Arms (outside body edges)
+      if (x < 20) return 'Left Arm';
+      if (x > 80) return 'Right Arm';
+
+      // Chest
+      if (y < 37) {
+        if (x < 50) return 'Left Chest';
+        return 'Right Chest';
+      }
+      // Upper abdomen
+      if (y < 48) {
+        if (x < 50) return 'Left Abdomen';
+        return 'Right Abdomen';
+      }
+      // Lower abdomen / pelvis
+      if (y < 62) return 'Pelvic Region';
+
+      // Thighs
+      if (y < 78) {
+        if (x < 50) return 'Left Thigh';
+        return 'Right Thigh';
+      }
+      // Lower legs
+      if (x < 50) return 'Left Lower Leg';
+      return 'Right Lower Leg';
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  HANDLE MAP CLICK → Place or erase marker                        ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  When the user clicks on the transparent overlay (#map-canvas), ║
+    ║  we:                                                             ║
+    ║  1. Get the click position relative to the canvas element.      ║
+    ║  2. Run a pixel hit-test on the offscreen canvas to confirm the  ║
+    ║     tap landed on the grey body silhouette, not the white bg.    ║
+    ║  3. Convert to percentage coordinates (zoom-independent).        ║
+    ║  4. Determine the body region from those percentages.            ║
+    ║  5. Create a hotspot DOM element and append to #marker-layer.    ║
+    ║  6. Update the info card with the region name + severity.        ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function handleMapClick(event) {
+      if (state.currentTool === 'erase') return;
+
+      const overlay = document.getElementById('map-canvas');
+      const rect    = overlay.getBoundingClientRect();
+
+      // Raw pixel position inside the overlay (accounts for scroll + zoom)
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+
+      /*
+      ── PIXEL HIT-TEST ────────────────────────────────────────────────
+      The SVG is a JPEG raster image embedded as a <pattern>.
+      We cannot use SVG path hit-testing on raster content.
+      Instead we:
+        1. Draw the anatomy SVG into an offscreen <canvas> at 390×740.
+        2. Sample the RGBA pixel at the click coordinate.
+        3. The body silhouette renders as grey (R≈G≈B, not white).
+           White background pixels have R > 240 AND G > 240 AND B > 240.
+        4. If the pixel is essentially white → outside the body → reject.
+        5. Otherwise → on the body → allow marker placement.
+
+      state.hitCanvas is built once on DOMContentLoaded and reused on
+      every click, so there is zero performance cost after init.
+      ──────────────────────────────────────────────────────────────────
+      */
+      if (!state.hitCanvas) {
+        // Canvas not ready yet (image still loading) — allow click
+        // so the UI is never silently broken during slow loads.
+        placeMarker(clickX, clickY, rect);
+        return;
+      }
+
+      // Scale click coords to the canvas's internal resolution
+      const scaleX = state.hitCanvas.width  / rect.width;
+      const scaleY = state.hitCanvas.height / rect.height;
+      const px = Math.round(clickX * scaleX);
+      const py = Math.round(clickY * scaleY);
+
+      // Read the single pixel
+      const ctx  = state.hitCanvas.getContext('2d');
+      const data = ctx.getImageData(px, py, 1, 1).data;
+      // data = [R, G, B, A]
+      const r = data[0], g = data[1], b = data[2], a = data[3];
+
+      /*
+        A pixel is "outside the body" (white / transparent background) when:
+          • alpha is very low (fully transparent)  OR
+          • all channels are very bright (near-white)
+        The body silhouette, even at 20% opacity+desaturated, renders
+        darker than the surrounding white — R, G, B will be noticeably
+        below 240 wherever the body photo pixels appear.
+        Threshold chosen from manual inspection: 235.
+      */
+      const isBackground = (a < 20) || (r > 235 && g > 235 && b > 235);
+
+      if (isBackground) {
+        // ── MISS FEEDBACK ──────────────────────────────────────────
+        // Show a brief ripple at the tap point to confirm the tap
+        // registered, then fade it — makes the constraint feel
+        // intentional rather than broken.
+        showMissFeedback(event.clientX, event.clientY);
+        return;
+      }
+
+      placeMarker(clickX, clickY, rect);
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  PLACE MARKER — called after hit-test passes                     ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function placeMarker(clickX, clickY, rect) {
+      // Convert pixel → percentage of the overlay dimensions
+      const xPct = (clickX / rect.width)  * 100;
+      const yPct = (clickY / rect.height) * 100;
+
+      const region   = getRegionLabel(xPct, yPct);
+      const severity = `Acute (${state.vasScore}/10)`;
+
+      const marker = { xPct, yPct, label: region, severity };
+      state.markers.push(marker);
+      state.activeMarker = marker;
+
+      renderMarker(marker);
+      updateInfoCard(region, severity);
+      document.getElementById('summary-location').textContent = region;
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  SHOW MISS FEEDBACK                                              ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  A small grey ripple appears at the tap point then fades — gives ║
+    ║  the patient clear feedback that the tap was outside the body.   ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function showMissFeedback(clientX, clientY) {
+      const ripple = document.createElement('div');
+
+      // Position fixed so it's relative to the viewport, not a parent
+      ripple.style.cssText = `
+        position: fixed;
+        left:   ${clientX}px;
+        top:    ${clientY}px;
+        width:  40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid rgba(148,163,184,0.7);
+        background: rgba(148,163,184,0.15);
+        transform: translate(-50%, -50%) scale(0.4);
+        pointer-events: none;
+        z-index: 9999;
+        transition: transform 0.35s ease-out, opacity 0.35s ease-out;
+        opacity: 1;
+      `;
+      document.body.appendChild(ripple);
+
+      // Trigger animation on next frame
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          ripple.style.transform = 'translate(-50%, -50%) scale(1.6)';
+          ripple.style.opacity   = '0';
+        });
+      });
+
+      // Remove from DOM after animation completes
+      setTimeout(() => ripple.remove(), 400);
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  RENDER SUMMARY MARKERS                                          ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  Called whenever the patient-summary screen is shown.            ║
+    ║  Clears #summary-marker-layer and re-draws one static dot per    ║
+    ║  marker in state.markers.                                        ║
+    ║                                                                  ║
+    ║  COORDINATE MAPPING                                              ║
+    ║  The summary SVG uses the same viewBox (0 0 390 740) as the      ║
+    ║  mapping SVG, rendered at 100% of its container width with       ║
+    ║  preserveAspectRatio="xMidYMin meet".                            ║
+    ║                                                                  ║
+    ║  Markers on the mapping screen are stored as % of 390 × 740.    ║
+    ║  The summary container is the card width (full card minus        ║
+    ║  padding = 100%) and clips vertically at 288 px.                 ║
+    ║                                                                  ║
+    ║  Because the SVG is width:100% and uses xMidYMin, the rendered   ║
+    ║  pixel position of any point (xPct, yPct) is:                   ║
+    ║    x_px = containerWidth  × (xPct / 100)                        ║
+    ║    y_px = containerWidth  × (740/390) × (yPct / 100) − 20       ║
+    ║  (the −20 matches the top:−20px nudge on the SVG wrapper)        ║
+    ║                                                                  ║
+    ║  We apply the same xPct/yPct as left/top % directly on the      ║
+    ║  overlay div — the browser's CSS layout engine does the same     ║
+    ║  scaling math automatically, so the dots land correctly.         ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function renderSummaryMarkers() {
+      const layer = document.getElementById('summary-marker-layer');
+      if (!layer) return;
+
+      // Wipe any previously rendered dots
+      layer.innerHTML = '';
+
+      if (state.markers.length === 0) return;
+
+      state.markers.forEach(marker => {
+        /*
+          The summary SVG wrapper has top:−20px, so we must shift the
+          marker up by the same 20px to keep it visually aligned with
+          the anatomy.  We express this as a calc() on the top value.
+
+          The SVG renders at its natural aspect ratio (390:740 ≈ 1:1.9)
+          scaled to the container width.  Because we're using percentage
+          coordinates relative to the same viewBox, left/top % maps
+          directly — no extra scaling math needed for left.
+
+          For top, the 20px nudge shifts the SVG up, so the marker must
+          also shift up by (20 / containerHeight) expressed as a %.
+          In practice the offset is small and nearly invisible at the
+          body scale, so we apply it as a raw px offset in transform.
+        */
+        const dot = document.createElement('div');
+        dot.style.cssText = `
+          position: absolute;
+          left:      ${marker.xPct}%;
+          top:       calc(${marker.yPct}% - 20px);
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+        `;
+
+        /*
+          Static dot — no pulse animation on the summary screen.
+          Two layers: soft glow ring + solid centre, matching the
+          Figma design for the review state.
+        */
+        dot.innerHTML = `
+          <div style="
+            width: 28px; height: 28px;
+            background: rgba(255,107,107,0.15);
+            border-radius: 50%;
+            border: 1px solid rgba(255,107,107,0.30);
+            display: flex; align-items: center; justify-content: center;
+          ">
+            <div style="
+              width: 12px; height: 12px;
+              background: #FF6B6B;
+              border-radius: 50%;
+              box-shadow: 0 0 8px rgba(255,107,107,0.7);
+            "></div>
+          </div>
+        `;
+
+        layer.appendChild(dot);
+      });
+
+      // Update the location label from the most recent marker
+      const last = state.markers[state.markers.length - 1];
+      if (last) {
+        const el = document.getElementById('summary-location');
+        if (el) el.textContent = last.label;
+      }
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  BUILD HIT-TEST CANVAS                                           ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  Draws the anatomy SVG into an offscreen <canvas> at its native  ║
+    ║  390×740 resolution.  We use an <img> element loaded from a Blob ║
+    ║  URL of the SVG source — this is the only cross-browser way to   ║
+    ║  rasterise an SVG with an embedded JPEG pattern onto a canvas.   ║
+    ║                                                                  ║
+    ║  Once drawn, getImageData() can sample any pixel instantly.      ║
+    ║  We store the canvas on state.hitCanvas for reuse.               ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function buildHitCanvas() {
+      /*
+        SVG_W / SVG_H must match the anatomy SVG's width/height attributes.
+        We use 2× resolution for retina accuracy (optional — 1× also works).
+      */
+      const SVG_W = 390;
+      const SVG_H = 740;
+      const SCALE = 1; // Increase to 2 for retina precision
+
+      // 1. Serialise the live SVG element to a string
+      const svgEl  = document.getElementById('anatomy-svg');
+      const svgStr = new XMLSerializer().serializeToString(svgEl);
+
+      // 2. Create a Blob URL so we can load it as an <img>
+      const blob   = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      const url    = URL.createObjectURL(blob);
+
+      // 3. Load into an Image, then draw onto canvas
+      const img    = new Image();
+      img.onload = () => {
+        const c   = document.createElement('canvas');
+        c.width   = SVG_W * SCALE;
+        c.height  = SVG_H * SCALE;
+        const ctx = c.getContext('2d');
+
+        // White background — matches what the browser renders behind the SVG
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+
+        state.hitCanvas = c;
+        console.log('[ECHO] Hit-test canvas ready ✓');
+      };
+      img.onerror = (e) => {
+        // If the SVG fails to load (e.g. CSP blocks Blob URLs),
+        // log the error but don't break the UI — clicks will still
+        // place markers everywhere (fallback behaviour).
+        console.warn('[ECHO] Hit-test canvas failed to load:', e);
+      };
+      img.src = url;
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  RENDER MARKER                                                   ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  Creates the 3-layer pulsing hotspot DOM node and places it at   ║
+    ║  percentage coordinates inside #marker-layer.                    ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function renderMarker(marker) {
+      const layer = document.getElementById('marker-layer');
+
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        position: absolute;
+        left: ${marker.xPct}%;
+        top:  ${marker.yPct}%;
+        transform: translate(-50%, -50%);
+        pointer-events: all;
+        cursor: pointer;
+      `;
+
+      // In erase mode, clicking a placed marker removes it
+      wrapper.addEventListener('click', (e) => {
+        if (state.currentTool === 'erase') {
+          e.stopPropagation();
+          wrapper.remove();
+          state.markers = state.markers.filter(m => m !== marker);
+          // Reset info card if no markers remain
+          if (state.markers.length === 0) {
+            document.getElementById('info-area').textContent     = 'Tap body to select';
+            document.getElementById('info-severity').textContent = '—';
+          }
+        }
+      });
+
+      /*
+        Three concentric layers:
+          1. Outer glow ring  (48 × 48 px, 10% red fill)
+          2. Pulsing mid ring (32 × 32 px, CSS animation)
+          3. Solid centre dot (16 × 16 px, hard red + glow shadow)
+      */
+      wrapper.innerHTML = `
+        <div style="
+          width:48px; height:48px;
+          background:rgba(255,107,107,0.10);
+          border-radius:50%;
+          border:1px solid rgba(255,107,107,0.20);
+          display:flex; align-items:center; justify-content:center;
+          position:relative;
+        ">
+          <div class="hotspot-ring" style="
+            position:absolute;
+            width:32px; height:32px;
+            border-radius:50%;
+            background:rgba(255,107,107,0.25);
+          "></div>
+          <div style="
+            width:16px; height:16px;
+            background:#FF6B6B;
+            border-radius:50%;
+            box-shadow:0 0 12px rgba(255,107,107,0.8);
+            position:relative; z-index:2;
+          "></div>
+        </div>
+      `;
+
+      layer.appendChild(wrapper);
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  UPDATE INFO CARD                                                ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function updateInfoCard(region, severity) {
+      document.getElementById('info-area').textContent     = region;
+      document.getElementById('info-severity').textContent = severity;
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  SAVE COORDINATES → navigate to Timeline                         ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function saveCoordinates() {
+      if (state.markers.length === 0) {
+        // Nudge the user — briefly shake the info card
+        const card = document.querySelector('#screen-mapping .mx-6');
+        card.classList.add('shake');
+        setTimeout(() => card.classList.remove('shake'), 500);
+        return;
+      }
+      showScreen('timeline');
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  VAS BUBBLE SELECTOR                                             ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function selectVAS(el) {
+      // Deselect all bubbles
+      document.querySelectorAll('.vas-bubble').forEach(b => {
+        b.classList.remove('selected');
+        b.classList.add('border-gray-300');
+        b.nextElementSibling.style.fontWeight = '700';
+        b.nextElementSibling.style.color      = 'rgba(26,83,92,0.4)';
+      });
+
+      // Select clicked
+      el.classList.add('selected');
+      el.classList.remove('border-gray-300');
+      el.nextElementSibling.style.fontWeight = '800';
+      el.nextElementSibling.style.color      = '#1A535C';
+
+      // Update score display + state
+      state.vasScore = parseInt(el.dataset.val);
+      const scoreEl = document.getElementById('vas-score');
+      scoreEl.textContent = String(state.vasScore).padStart(2, '0');
+
+      // Update severity bar on summary screen
+      document.getElementById('summary-severity').textContent    = `${state.vasScore}/10`;
+      document.getElementById('summary-severity-bar').style.width = `${state.vasScore * 10}%`;
+
+      // Update active marker severity text
+      if (state.activeMarker) {
+        state.activeMarker.severity = `Acute (${state.vasScore}/10)`;
+        document.getElementById('info-severity').textContent = state.activeMarker.severity;
+      }
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  PAIN BUTTON SELECTOR (single select)                            ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function selectPain(el) {
+      document.querySelectorAll('.pain-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  SYMPTOM TAG TOGGLE (multi select)                               ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    function toggleTag(el) {
+      el.classList.toggle('selected');
+      // Toggle the × close icon
+      const x = el.querySelector('span');
+      if (x) {
+        if (el.classList.contains('selected')) {
+          if (!x.textContent.includes('×')) x.textContent = '×';
+          x.style.display = 'inline';
+        } else {
+          x.style.display = 'none';
+        }
+      }
+      // Toggle border vs filled style
+      if (el.classList.contains('selected')) {
+        el.classList.remove('border', 'border-gray-300');
+      } else {
+        el.classList.add('border', 'border-gray-300');
+      }
+    }
+
+    /*
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  INIT                                                            ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    */
+    document.addEventListener('DOMContentLoaded', () => {
+      showScreen('mapping');
+      document.getElementById('vas-score').textContent = '07';
+
+      /*
+        Build the offscreen hit-test canvas.
+        We call this after a short delay to ensure the SVG (which contains
+        a base64 JPEG) has been parsed and is fully available in the DOM.
+        The Blob → Image → Canvas pipeline is async, so state.hitCanvas
+        will be populated a moment after this fires — well before the
+        first user tap.
+      */
+      setTimeout(buildHitCanvas, 100);
+    });
+  </script>
+
+</body>
+</html>

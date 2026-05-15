@@ -37,6 +37,9 @@
     /* Apply Manrope globally */
     body { font-family: 'Manrope', sans-serif; }
 
+    /* Phone shell: make it flex column so screens fill it */
+    body > div:first-child { display: flex; flex-direction: column; }
+
     /* ── Pulsing hotspot animation ──────────────────────────────────── */
     @keyframes pulse-ring {
       0%   { transform: scale(1);   opacity: 0.6; }
@@ -49,7 +52,7 @@
     /* ── Screen visibility helper ───────────────────────────────────── */
     /* All screens are hidden by default; JS toggles .active to show them */
     .screen { display: none; }
-    .screen.active { display: flex; }
+    .screen.active { display: flex; flex-direction: column; flex: 1; }
 
     /* ── Scrollable screen body ─────────────────────────────────────── */
     .screen-scroll { overflow-y: auto; }
@@ -107,15 +110,108 @@
   </style>
 </head>
 
-<body class="bg-gray-100 min-h-screen flex items-start justify-center py-8">
+<body class="bg-gray-100 min-h-screen flex items-stretch justify-center md:items-start md:py-8">
 
   <!--
   ┌──────────────────────────────────────────────────────────────────────┐
   │  PHONE SHELL — centres a 390px mobile frame on the page              │
   └──────────────────────────────────────────────────────────────────────┘
   -->
-  <div class="relative w-[390px] bg-gray-50 shadow-2xl rounded-[2rem] overflow-hidden"
-       style="min-height: 844px;">
+  <div class="relative w-full md:w-[390px] bg-gray-50 md:shadow-2xl md:rounded-[2rem] overflow-hidden flex flex-col"
+       style="min-height: 100dvh; min-height: 100vh; max-height: 100dvh; max-height: 100vh;">
+    <style>
+      @media (min-width: 768px) {
+        body > div:first-child {
+          min-height: 844px !important;
+          max-height: 844px !important;
+        }
+      }
+    </style>
+
+    <!--
+    ══════════════════════════════════════════════════════════════════════
+      SCREEN 0 — WELCOME (Landing / Entry Point)
+    ══════════════════════════════════════════════════════════════════════
+    Full-bleed welcome screen shown before any clinical interaction.
+    Vertically and horizontally centred within the phone shell.
+    -->
+    <div id="screen-welcome" class="screen active flex-col w-full items-center justify-center"
+         style="min-height: 100dvh; min-height: 100vh;
+                background: radial-gradient(ellipse 140% 60% at 50% 100%, rgba(26,83,92,0.06) 0%, transparent 70%), #f8fafc;">
+
+      <div class="w-full max-w-xs px-8 flex flex-col items-center gap-10">
+
+        <!-- ── Branding block ──────────────────────────────────────── -->
+        <div class="flex flex-col items-center gap-6">
+
+          <!-- Logo mark — teal square with white cross, 64×64 -->
+          <div class="relative">
+            <!-- Soft outer glow ring -->
+            <div class="absolute -inset-3 rounded-[22px] border border-echo-teal/10 bg-echo-teal/5"></div>
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" class="relative z-10">
+              <rect width="24" height="24" rx="7" fill="#1A535C"/>
+              <path d="M12 5v14M5 12h14" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <!-- Word mark + product line -->
+          <div class="flex flex-col items-center gap-1.5">
+            <span class="text-[11px] font-extrabold text-echo-teal/50 uppercase tracking-[0.25em]">
+              ECHO CLINICAL
+            </span>
+            <h1 class="text-4xl font-extrabold text-zinc-900 text-center leading-tight tracking-tight">
+              Welcome<br/>to ECHO
+            </h1>
+          </div>
+
+        </div>
+
+        <!-- ── Sub-headline ────────────────────────────────────────── -->
+        <p class="text-[13px] font-medium text-slate-500 text-center leading-6 tracking-wide">
+          A diagnostic aid for subjective<br/>symptom tracking.
+        </p>
+
+        <!-- ── CTA + secondary action ──────────────────────────────── -->
+        <div class="w-full flex flex-col gap-3">
+
+          <!-- Primary CTA -->
+          <button onclick="showScreen('mapping')"
+                  class="w-full py-4 bg-echo-teal rounded-2xl
+                         text-white text-[11px] font-extrabold uppercase tracking-widest
+                         shadow-[0_8px_24px_-4px_rgba(26,83,92,0.35)]
+                         hover:bg-teal-800 active:scale-[0.98]
+                         transition-all duration-150">
+            Log my symptoms
+          </button>
+
+          <!-- Ghost secondary -->
+          <button onclick="showScreen('patient-summary')"
+                  class="w-full py-3.5 rounded-2xl border border-slate-300 bg-white
+                         text-slate-500 text-[11px] font-bold uppercase tracking-widest
+                         hover:border-echo-teal hover:text-echo-teal
+                         active:bg-slate-50
+                         transition-all duration-150">
+            View previous record
+          </button>
+
+        </div>
+
+        <!-- ── Footer trust badge ──────────────────────────────────── -->
+        <div class="flex items-center gap-2 mt-2">
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
+            <path d="M6 0.5L0.5 2.75v4C0.5 9.87 2.97 12.68 6 13.5c3.03-.82 5.5-3.63 5.5-6.75v-4L6 0.5z"
+                  fill="#1A535C" opacity="0.25"/>
+            <path d="M3.5 7l2 2 3-3" stroke="#1A535C" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+          </svg>
+          <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+            HIPAA-compliant · Encrypted session
+          </span>
+        </div>
+
+      </div>
+
+    </div><!-- /screen-welcome -->
+
 
     <!--
     ══════════════════════════════════════════════════════════════════════
@@ -124,7 +220,7 @@
     This is the main entry point. Patient taps the body silhouette to
     place a hotspot marker at that exact coordinate.
     -->
-    <div id="screen-mapping" class="screen active flex-col w-full h-[844px]">
+    <div id="screen-mapping" class="screen flex-col w-full" style="min-height: 100dvh; min-height: 100vh;">
 
       <!-- ── Top Header Bar ───────────────────────────────────────── -->
       <!--
@@ -191,76 +287,7 @@
       </header>
 
       <!-- ── Scrollable Body ──────────────────────────────────────── -->
-      <div class="flex-1 overflow-y-auto screen-inner bg-white relative">
-
-        <!-- Gender Toggle (MALE / FEMALE) -->
-        <!--
-          Floats over the top of the anatomy SVG.
-          top: 12px places it just inside the container header area,
-          matching the Figma design where it sits above the figure.
-        -->
-        <div style="position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:20;"
-             class="bg-slate-100 border border-slate-200 rounded-2xl p-1 flex gap-0">
-          <button id="btn-male"
-                  onclick="setGender('male')"
-                  class="gender-btn active px-6 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide transition-all">
-            MALE
-          </button>
-          <button id="btn-female"
-                  onclick="setGender('female')"
-                  class="gender-btn px-6 py-2 rounded-xl text-[11px] font-extrabold text-slate-500 uppercase tracking-wide transition-all">
-            FEMALE
-          </button>
-        </div>
-
-        <!-- ── Tool Panel (left sidebar icons) ──────────────────── -->
-        <!--
-          Positioned relative to anatomy-container.
-          top:180px sits mid-torso on the 430px-tall container window.
-        -->
-        <div style="position:absolute; left:8px; top:180px; z-index:20;"
-             class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 flex flex-col gap-1">
-          <!-- Draw tool (active) -->
-          <button id="tool-draw"
-                  onclick="setTool('draw')"
-                  title="Place marker"
-                  class="w-12 h-12 bg-echo-teal rounded-xl flex items-center justify-center shadow-sm transition-all">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <!-- Eraser tool -->
-          <button id="tool-erase"
-                  onclick="setTool('erase')"
-                  title="Erase markers"
-                  class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
-            <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
-              <path d="M11 2L16 7L7 16H2L1 12L11 2Z" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M7 16H17" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- ── Zoom Panel (below tool panel) ─────────────────────── -->
-        <div style="position:absolute; left:8px; top:300px; z-index:20;"
-             class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 flex flex-col gap-1">
-          <button onclick="zoomIn()" title="Zoom in"
-                  class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5.5" stroke="#475569" stroke-width="1.5"/>
-              <path d="M7 4.5V9.5M4.5 7h5" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M11 11l3 3" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <button onclick="zoomOut()" title="Zoom out"
-                  class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5.5" stroke="#475569" stroke-width="1.5"/>
-              <path d="M4.5 7h5" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M11 11l3 3" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
+      <div class="flex-1 overflow-y-auto screen-inner bg-white">
 
         <!-- ── ANATOMY MAP CANVAS ─────────────────────────────────── -->
         <!--
@@ -282,7 +309,65 @@
         -->
         <div id="anatomy-container"
              class="relative w-full"
-             style="height: 430px; overflow: hidden;">
+             style="overflow: hidden; max-height: 55vh;">
+
+          <!-- Gender Toggle (MALE / FEMALE) — floats over anatomy map -->
+          <div style="position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:20;"
+               class="bg-slate-100 border border-slate-200 rounded-2xl p-1 flex gap-0">
+            <button id="btn-male"
+                    onclick="setGender('male')"
+                    class="gender-btn active px-6 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide transition-all">
+              MALE
+            </button>
+            <button id="btn-female"
+                    onclick="setGender('female')"
+                    class="gender-btn px-6 py-2 rounded-xl text-[11px] font-extrabold text-slate-500 uppercase tracking-wide transition-all">
+              FEMALE
+            </button>
+          </div>
+
+          <!-- ── Tool Panel (draw / erase) ─── -->
+          <div style="position:absolute; left:8px; top:30%; z-index:20;"
+               class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 flex flex-col gap-1">
+            <button id="tool-draw"
+                    onclick="setTool('draw')"
+                    title="Place marker"
+                    class="w-12 h-12 bg-echo-teal rounded-xl flex items-center justify-center shadow-sm transition-all">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button id="tool-erase"
+                    onclick="setTool('erase')"
+                    title="Erase markers"
+                    class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
+              <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
+                <path d="M11 2L16 7L7 16H2L1 12L11 2Z" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M7 16H17" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- ── Zoom Panel ─── -->
+          <div style="position:absolute; left:8px; top:56%; z-index:20;"
+               class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 flex flex-col gap-1">
+            <button onclick="zoomIn()" title="Zoom in"
+                    class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="#475569" stroke-width="1.5"/>
+                <path d="M7 4.5V9.5M4.5 7h5" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M11 11l3 3" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <button onclick="zoomOut()" title="Zoom out"
+                    class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="#475569" stroke-width="1.5"/>
+                <path d="M4.5 7h5" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M11 11l3 3" stroke="#475569" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
 
           <!-- Label: ANTERIOR -->
           <span class="absolute top-2 left-1/2 -translate-x-1/2 z-10
@@ -298,7 +383,7 @@
           <div id="anatomy-wrap"
                class="relative transition-transform duration-300"
                style="transform-origin: top center; transform: scale(1);
-                      width: 390px; height: 740px;">
+                      width: 100%; aspect-ratio: 390 / 740;">
 
             <!--
               ══════════════════════════════════════════════════════════
@@ -309,12 +394,12 @@
               ══════════════════════════════════════════════════════════
             -->
             <svg id="anatomy-svg"
-                 width="390" height="740"
+                 width="100%" height="100%"
                  viewBox="0 0 390 740"
                  fill="none"
                  xmlns="http://www.w3.org/2000/svg"
                  xmlns:xlink="http://www.w3.org/1999/xlink"
-                 style="display:block; pointer-events:none;">
+                 style="display:block; pointer-events:none; position:absolute; inset:0;">
               <g opacity="0.2">
                 <rect width="778" height="1868" transform="translate(-194 -572)" fill="url(#pattern0_18_2677)"/>
                 <rect width="778" height="1868" transform="translate(-194 -572)" fill="white" style="mix-blend-mode:saturation"/>
@@ -337,8 +422,7 @@
               pixel-perfectly onto the anatomy image.
             -->
             <div id="marker-layer"
-                 class="absolute inset-0 pointer-events-none"
-                 style="width:390px; height:740px;">
+                 class="absolute inset-0 pointer-events-none">
             </div>
 
           </div><!-- /anatomy-wrap -->
@@ -361,10 +445,9 @@
                style="
                  position: absolute;
                  top: 0;
-                 left: 50%;
-                 transform: translateX(-50%);
-                 width: 390px;
-                 height: 740px;
+                 left: 0;
+                 width: 100%;
+                 height: 100%;
                  cursor: crosshair;
                  z-index: 10;
                  background: transparent;
@@ -463,7 +546,7 @@
       SCREEN 2 — TIMELINE (Treatment Timeline / Duration Picker)
     ══════════════════════════════════════════════════════════════════════
     -->
-    <div id="screen-timeline" class="screen flex-col w-full h-[844px]">
+    <div id="screen-timeline" class="screen flex-col w-full" style="min-height: 100dvh; min-height: 100vh;">
 
       <!-- Header -->
       <header class="flex-shrink-0 h-16 px-6 bg-white border-b border-neutral-300 flex justify-between items-center">
@@ -643,7 +726,7 @@
       SCREEN 3 — DESCRIPTION (Symptom Entry v2.0)
     ══════════════════════════════════════════════════════════════════════
     -->
-    <div id="screen-description" class="screen flex-col w-full h-[844px]">
+    <div id="screen-description" class="screen flex-col w-full" style="min-height: 100dvh; min-height: 100vh;">
 
       <!-- Header -->
       <header class="flex-shrink-0 h-16 px-6 bg-white border-b border-gray-200 flex justify-between items-center">
@@ -882,7 +965,7 @@
       SCREEN 4 — PATIENT SUMMARY (Review Your Symptoms)
     ══════════════════════════════════════════════════════════════════════
     -->
-    <div id="screen-patient-summary" class="screen flex-col w-full h-[844px]">
+    <div id="screen-patient-summary" class="screen flex-col w-full" style="min-height: 100dvh; min-height: 100vh;">
 
       <!-- Header -->
       <header class="flex-shrink-0 h-16 px-6 bg-white border-b border-gray-200 flex justify-between items-center">
@@ -1111,7 +1194,7 @@
       SCREEN 5 — CONFIRMATION (Thank You)
     ══════════════════════════════════════════════════════════════════════
     -->
-    <div id="screen-confirmation" class="screen flex-col w-full h-[844px]">
+    <div id="screen-confirmation" class="screen flex-col w-full" style="min-height: 100dvh; min-height: 100vh;">
 
       <!-- No header on this screen — full bleed centered content -->
       <div class="flex-1 bg-slate-100 flex items-center justify-center overflow-y-auto
@@ -1196,7 +1279,7 @@
       SCREEN 6 — PROVIDER REPORT (Clinical Brief)
     ══════════════════════════════════════════════════════════════════════
     -->
-    <div id="screen-provider-report" class="screen flex-col w-full h-[844px]">
+    <div id="screen-provider-report" class="screen flex-col w-full" style="min-height: 100dvh; min-height: 100vh;">
 
       <!-- Header -->
       <header class="flex-shrink-0 h-16 px-6 bg-gray-50 border-b border-neutral-300 flex justify-between items-center">
@@ -1446,9 +1529,9 @@
   │  SCREEN NAV HELPER (pill below phone — for quick prototyping)        │
   └──────────────────────────────────────────────────────────────────────┘
   -->
-  <div class="fixed bottom-6 left-1/2 -translate-x-1/2
+  <div class="hidden md:flex fixed bottom-6 left-1/2 -translate-x-1/2
               bg-white/90 backdrop-blur border border-gray-200 rounded-full
-              shadow-lg px-4 py-2 flex gap-2 text-[10px] z-50">
+              shadow-lg px-4 py-2 gap-2 text-[10px] z-50">
     <button onclick="showScreen('mapping')"          class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Map</button>
     <button onclick="showScreen('timeline')"         class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Timeline</button>
     <button onclick="showScreen('description')"      class="px-2 py-1 rounded-full hover:bg-gray-100 font-bold text-gray-600 uppercase tracking-wide">Describe</button>
@@ -1554,11 +1637,8 @@
       // Scale the anatomy image + marker layer together
       document.getElementById('anatomy-wrap').style.transform =
         `scale(${state.zoomLevel})`;
-      // The map-canvas overlay must match — it sits outside anatomy-wrap
-      // but inside the same container, so we scale it identically.
-      const canvas = document.getElementById('map-canvas');
-      canvas.style.transform = `translateX(-50%) scale(${state.zoomLevel})`;
-      canvas.style.transformOrigin = 'top center';
+      // The map-canvas sits inside anatomy-container with position:absolute + inset:0
+      // No extra transform needed — zoom is handled solely via anatomy-wrap scale.
     }
 
     /*
@@ -2089,7 +2169,7 @@
     ╚══════════════════════════════════════════════════════════════════╝
     */
     document.addEventListener('DOMContentLoaded', () => {
-      showScreen('mapping');
+      showScreen('welcome');
       document.getElementById('vas-score').textContent = '07';
 
       /*
